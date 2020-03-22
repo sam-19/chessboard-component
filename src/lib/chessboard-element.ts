@@ -152,6 +152,105 @@ const sparePieceId = (piece: Piece) => `spare-piece-${piece}`;
 const wikipediaPiece = (p: string) =>
   new URL(`../chesspieces/wikipedia/${p}.png`, import.meta.url).href;
 
+/**
+ * A custom element that renders an interactive chess board.
+ *
+ * @fires mouseover-square - Fired when the cursor is over a square
+ *     The event's `detail` object has the following properties:
+ *       * `square`: the square that was entered
+ *       * `piece`: the piece on that square (or `false` if there is no piece)
+ *       * `position`: the current position
+ *       * `orientation`: the current orientation.
+ *
+ *     Note that `mouseover-square` will *not* fire during piece drag and drop.
+ *     Use `drag-move` instead.
+ *
+ * @fires mouseout-square - Fired when the cursor exits a square
+ *     The event's `detail` object has the following properties:
+ *       `square`: the square that was left
+ *       `piece`: the piece on that square (or `false` if there is no piece)
+ *       `position`: the current position
+ *       `orientation`: the current orientation.
+ *
+ *     Note that `mouseout-square` will *not* fire during piece drag and drop.
+ *     Use `drag-move` instead.
+ *
+ * @fires snapback-end - Fired when the snapback animation is complete when
+ *     pieces are dropped off the board.
+ *     The event's `detail` object has the following properties:
+ *       * `piece`: the dragged piece
+ *       * `square`: the square the piece returned to
+ *       * `position`: the current position
+ *       * `orientation`: the current orientation.
+ *
+ * @fires snap-end - Fired when a piece completes a snap animation
+ *     The event's `detail` object has the following properties:
+ *       * `source`: the source of the dragged piece
+ *       * `square`: the target of the dragged piece
+ *       * `piece`: the dragged piece
+ *
+ * @fires drag-start - Fired when a piece is picked up
+ *     The event's `detail` object has the following properties:
+ *       * `source`: the source of the piece
+ *       * `piece`: the piece
+ *       * `position`: the current position on the board
+ *       * `orientation`: the current orientation.
+ *
+ *     The drag action is prevented if the listener calls `event.preventDefault()`.
+ *
+ * @fires drag-move - Fired when a user-initiated drag moves
+ *     The event's `detail` object has the following properties:
+ *       * `newLocation`: the new location of the piece
+ *       * `oldLocation`: the old location of the piece
+ *       * `source`: the source of the dragged piece
+ *       * `piece`: the piece
+ *       * `position`: the current position on the board
+ *       * `orientation`: the current orientation.
+ *
+ * @fires drop - Fired when a user-initiated drag ends
+ *     The event's `detail` object has the following properties:
+ *       * `source`: the source of the dragged piece
+ *       * `target`: the target of the dragged piece
+ *       * `piece`: the piece
+ *       * `newPosition`: the new position once the piece drops
+ *       * `oldPosition`: the old position before the piece was picked up
+ *       * `orientation`: the current orientation.
+ *       * `setAction(action)`: a function to call to change the default action.
+ *         If `'snapback'` is passed to `setAction`, the piece will return to it's source square.
+ *         If `'trash'` is passed to `setAction`, the piece will be removed.
+ *
+ * @fires move-end - Fired when a piece move completes
+ *    The event's `detail` object has the following properties:
+ *      * `oldPosition`: the old position
+ *      * `newPosition`: the new position
+ *
+ * @fires change - Fired when the board position changes
+ *     The event's `detail` property has two properties:
+ *       * `value`: the new position
+ *       * `oldValue`: the old position
+ *
+ *     **Warning**: do *not* call any position-changing methods in your event
+ *     listener or you may cause an infinite loop. Position-changing methods
+ *     are: `clear()`, `move()`, `position()`, and `start()`.
+ *
+ * @fires error - Fired in the case of invalid attributes.
+ *
+ * @cssprop [--light-color=#f0d9b5] - The background for white squares and text color for black squares
+ * @cssprop [--dark-color=#b58863] - The background for black squares and text color for white squares
+ * @cssprop [--highlight-color=yellow] - The highlight color
+ *
+ * @csspart board - The chess board
+ * @csspart square - A square on the board
+ * @csspart piece - A chess piece
+ * @csspart spare-pieces - The spare piece container
+ * @csspart dragged-piece - The currently dragged piece
+ * @csspart white - A white square
+ * @csspart black - A black square
+ * @csspart highlight - A highlighted square
+ * @csspart notation - The square location labels
+ * @csspart alpha - The alpha (column) labels
+ * @csspart numeric - The numeric (row) labels
+ */
 @customElement('chess-board')
 export class ChessBoardElement extends LitElement {
   static styles = styles;
@@ -178,12 +277,21 @@ export class ChessBoardElement extends LitElement {
     this.requestUpdate('position', oldValue);
   }
 
+  /**
+   * Whether to show the board notation.
+   */
   @property({
     attribute: 'hide-notation',
     type: Boolean,
   })
   hideNotation = false;
 
+  /**
+   * Whether to show the board notation. This is always the inverse of
+   * `hideNotation`, which reflects the `hide-notation` attribute.
+   *
+   * @default true
+   */
   get showNotation() {
     return !this.hideNotation;
   }
@@ -192,46 +300,89 @@ export class ChessBoardElement extends LitElement {
     this.hideNotation = !v;
   }
 
+  /**
+   * The orientation of the board. `'white'` for the white player at the bottom,
+   * `'black'` for the black player at the bottom.
+   */
   @property()
   orientation: SquareColor = 'white';
 
+  /**
+   * If `true`, pieces on the board are draggable to other squares.
+   */
   @property({
     attribute: 'draggable-pieces',
     type: Boolean,
   })
   draggablePieces = false;
 
+  /**
+   * If `'snapback'`, pieces dropped off the board will return to their original
+   * square. If `'trash'`, pieces dropped off the board will be removed from the
+   * board.
+   *
+   * This property has no effect when `draggable` is `false`.
+   */
   @property({attribute: 'drop-off-board'})
   dropOffBoard: OffBoardAction = 'snapback';
 
+  /**
+   * A template string used to determine the source of piece images. If
+   * `pieceTheme` is a function the first argument is the piece code. The
+   * function should return an `<img>` source.
+   */
   @property({attribute: 'piece-theme'})
   pieceTheme: string | ((piece: string) => string) = wikipediaPiece;
 
+  /**
+   * Animation speed for when pieces move between squares or from spare pieces
+   * to the board.
+   */
   @property({
     attribute: 'move-speed',
   })
   moveSpeed: AnimationSpeed = DEFAULT_MOVE_SPEED;
 
+  /**
+   * Animation speed for when pieces that were dropped outside the board return
+   * to their original square.
+   */
   @property({
     attribute: 'snapback-speed',
   })
   snapbackSpeed: AnimationSpeed = DEFAULT_SNAPBACK_SPEED;
 
+  /**
+   * Animation speed for when pieces \"snap\" to a square when dropped.
+   */
   @property({
     attribute: 'snap-speed',
   })
   snapSpeed: AnimationSpeed = DEFAULT_SNAP_SPEED;
 
+  /**
+   * Animation speed for when pieces are removed.
+   */
   @property({
     attribute: 'trash-speed',
   })
   trashSpeed: AnimationSpeed = DEFAULT_TRASH_SPEED;
 
+  /**
+   * Animation speed for when pieces appear on a square.
+   *
+   * Note that the "appear" animation only occurs when `sparePieces` is `false`.
+   */
   @property({
     attribute: 'appear-speed',
   })
   appearSpeed: AnimationSpeed = DEFAULT_APPEAR_SPEED;
 
+  /**
+   * If `true`, the board will have spare pieces that can be dropped onto the
+   * board. If `sparePieces` is set to `true`, `draggablePieces` gets set to
+   * `true` as well.
+   */
   @property({
     attribute: 'spare-pieces',
     type: Boolean,
@@ -264,7 +415,7 @@ export class ChessBoardElement extends LitElement {
   }
 
   // -------------------------------------------------------------------------
-  // Markup Building
+  // DOM Building
   // -------------------------------------------------------------------------
 
   render() {
@@ -438,7 +589,6 @@ export class ChessBoardElement extends LitElement {
     id?: string,
     part?: string
   ) {
-    
     if (piece === undefined) {
       return nothing;
     }
@@ -567,7 +717,7 @@ export class ChessBoardElement extends LitElement {
 
     // do nothing if there is no piece on this square
     const squareEl = e.currentTarget as HTMLElement;
-    const square = squareEl!.getAttribute('data-square');
+    const square = squareEl.getAttribute('data-square');
     if (square === null) {
       return;
     }
@@ -759,7 +909,13 @@ export class ChessBoardElement extends LitElement {
   // Public Methods
   // -------------------------------------------------------------------------
 
-  setPosition(position: Position, useAnimation: boolean = true) {
+  /**
+   * Sets the position of the board.
+   *
+   * @param useAnimation If `true`, animate to the new position. If `false`,
+   *   show the new position instantly.
+   */
+  setPosition(position: Position, useAnimation = true) {
     position = normalizePozition(position);
 
     // validate position object
@@ -783,22 +939,42 @@ export class ChessBoardElement extends LitElement {
     this.requestUpdate();
   }
 
-  // shorthand method to get the current FEN
+  /**
+   * Returns the current position as a FEN string.
+   */
   fen() {
     return objToFen(this._currentPosition);
   }
 
-  // set the starting position
+  /**
+   * Sets the board to the start position.
+   *
+   * @param useAnimation If `true`, animate to the new position. If `false`,
+   *   show the new position instantly.
+   */
   start(useAnimation?: boolean) {
     this.setPosition('start', useAnimation);
   }
 
-  // clear the board
+  /**
+   * Removes all the pieces on the board. If `useAnimation` is `false`, removes
+   * pieces instantly.
+   *
+   * This is shorthand for `setPosition({})`.
+   *
+   * @param useAnimation If `true`, animate to the new position. If `false`,
+   *   show the new position instantly.
+   */
   clear(useAnimation?: boolean) {
     this.setPosition({}, useAnimation);
   }
 
-  // move pieces
+  /**
+   * Executes one or more moves on the board.
+   *
+   * Moves are strings the form of "e2-e4", "f6-d5", etc., Pass `false` as an
+   * argument to disable animation.
+   */
   move(...args: Array<string | false>) {
     let useAnimation = true;
 
@@ -838,6 +1014,10 @@ export class ChessBoardElement extends LitElement {
     this.orientation = this.orientation === 'white' ? 'black' : 'white';
   }
 
+  /**
+   * Recalculates board and square sizes based on the parent element and redraws
+   * the board accordingly.
+   */
   resize() {
     this.requestUpdate();
   }
@@ -919,7 +1099,7 @@ export class ChessBoardElement extends LitElement {
 
   private async _snapbackDraggedPiece() {
     assertIsDragging(this._dragState);
-    const {source, piece} = this._dragState!;
+    const {source, piece} = this._dragState;
 
     // there is no "snapback" for spare pieces
     if (source === 'spare') {
@@ -965,7 +1145,7 @@ export class ChessBoardElement extends LitElement {
 
   private async _trashDraggedPiece() {
     assertIsDragging(this._dragState);
-    const {source, piece} = this._dragState!;
+    const {source, piece} = this._dragState;
 
     // remove the source piece
     const newPosition = deepCopy(this._currentPosition);
@@ -1001,7 +1181,7 @@ export class ChessBoardElement extends LitElement {
 
   private async _dropDraggedPieceOnSquare(square: string) {
     assertIsDragging(this._dragState);
-    const {source, piece} = this._dragState!;
+    const {source, piece} = this._dragState;
 
     // update position
     const newPosition = deepCopy(this._currentPosition);
@@ -1133,7 +1313,7 @@ export class ChessBoardElement extends LitElement {
 
   private async _stopDraggedPiece(location: Location | 'offboard') {
     assertIsDragging(this._dragState);
-    const {source, piece} = this._dragState!;
+    const {source, piece} = this._dragState;
 
     // determine what the action should be
     let action: Action = 'drop';

@@ -1,0 +1,116 @@
+<!doctype html>
+<html>
+  {% include "head.html" %}
+  <body class="homepage">
+    <script type="module" src="/js/chessboard-element.bundled.js"></script>
+
+    <div class="hero-wrapper">
+      <div class="body-width-115f6 hero-inner-556fe">
+        <img src="/img/bK.png" alt="Black King">
+        <h1>chessboard-element</h1>
+        <h2>A &lt;chess-board> element for your web pages</h2>
+      </div>
+    </div>
+
+    <nav id="start" class="homepage-nav-b9ecc">
+      <div class="body-width-115f6 navbar-a57cc hover-effect">
+        <a href="#start"><span class="piece">&#9823;</span> Getting Started</a>
+        <a href="/examples/"><span class="piece">&#9819;</span> Examples</a>
+        <a href="/docs/"><span class="piece">&#9820;</span> Documentation</a>
+        <a href="/download/"><span class="piece">&#9822;</span> Download</a>
+      </div>
+    </nav>
+
+    <main>
+
+
+      <section class="homepage-section-88e4a body-width-115f6">
+      <div class="col-11bcf">
+        <h2>As easy as HTML</h2>
+          <p>
+              &lt;chess-board> is just an element. Use it anywhere you use HTML!
+          </p>
+          <h4>HTML</h4>
+          {% highlight "html" %}
+<chess-board></chess-board>
+          {% endhighlight %}
+          <p>
+              &lt;chess-board> works in plain HTML documents, with your favorite
+              framework, inside of CMSes, in Markdown, and more!
+          </p>
+      </div>
+      <div class="col-11bcf">
+          <chess-board id="board1"></chess-board>
+      </div>
+      </section>
+
+      <section class="homepage-section-88e4a body-width-115f6">
+      <div class="col-11bcf">
+          <h2>Declarative configuration with attributes</h2>
+          <p>
+              Set the board position, enable draggable pieces, show spare pieces, and
+              more with attributes.
+          </p>
+          <h4>HTML</h4>
+          {% highlight "html" %}
+<chess-board
+    draggable-pieces
+    position="8/R7/8/8/k1K5/8/8/8">
+</chess-board>
+          {% endhighlight %}
+      </pre>
+      </div>
+      <div class="col-11bcf">
+          <chess-board
+              draggable-pieces
+              position="8/R7/8/8/k1K5/8/8/8">
+          </chess-board>
+      </div>
+      </section>
+
+      <section class="homepage-section-88e4a body-width-115f6">
+      <div class="col-11bcf">
+          <h2>Powerful HTML, JavaScript, and CSS APIs</h2>
+          <p>
+            Set the board position, move pieces, listen to events, style squares and
+            pieces, and more with native HTML, JavaScript, and CSS APIs.
+          </p>
+          <h4>HTML</h4>
+          {% highlight "html" %}
+<chess-board id="board3"
+    draggable-pieces
+    spare-pieces
+    drop-off-board="trash">
+</chess-board>
+<button id="startBtn">Start Position</button>
+<button id="clearBtn">Clear Board</button>
+          {% endhighlight %}
+          <h4>JavaScript</h4>
+          {% highlight "js" %}
+startBtn.addEventListener('click', () => board3.start());
+clearBtn.addEventListener('click', () => board3.clear());    
+          {% endhighlight %}
+      </div>
+      <div class="col-11bcf">
+          <chess-board id="board3"
+              draggable-pieces
+              spare-pieces
+              drop-off-board="trash">
+          </chess-board>
+          <button id="startBtn">Start Position</button>
+          <button id="clearBtn">Clear Board</button>
+      </div>
+      </section>
+
+    </main>
+
+    {% include "footer.html" %}
+
+    <script>
+      // Example 2
+      startBtn.addEventListener('click', () => board3.start());
+      clearBtn.addEventListener('click', () => board3.clear());
+    </script>
+
+  </body>
+</html>

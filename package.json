@@ -13,6 +13,7 @@
   "module": "index.js",
   "type": "module",
   "devDependencies": {
+    "@11ty/eleventy": "^0.10.0",
     "@rollup/plugin-node-resolve": "^7.0.0",
     "@typescript-eslint/eslint-plugin": "^2.10.0",
     "@typescript-eslint/parser": "^2.10.0",
@@ -21,6 +22,7 @@
     "eslint": "^6.7.2",
     "eslint-config-prettier": "^6.7.0",
     "fs-plus": "3.1.1",
+    "glob": "^7.1.6",
     "jquery": ">=3.4.1",
     "kidif": "1.1.0",
     "mustache": "2.3.0",
@@ -31,16 +33,16 @@
     "rollup-plugin-terser": "^5.1.3",
     "typescript": "^3.7.2",
     "uglify-js": "3.6.0",
-    "web-component-analyzer": "^1.0.0"
+    "web-component-analyzer": "^1.0.2"
   },
   "scripts": {
     "serve": "es-dev-server --node-resolve",
     "build": "tsc",
     "analyze": "wca analyze \"src/**/*.ts\" --outFile custom-elements.json",
+    "api": "wca src/lib/chessboard-element.ts -f json2 --outFile docs/_data/docs.json --inlineTypes",
     "format": "prettier src/lib/* --write",
     "lint": "eslint src/lib/*.ts",
-    "bundle": "rollup -c",
-    "docs": "node scripts/docs.js"
+    "bundle": "rollup -c"
   },
   "dependencies": {
     "lit-element": "^2.2.1"

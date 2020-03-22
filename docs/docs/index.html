@@ -1,0 +1,826 @@
+<!doctype html>
+<html>
+  <head>
+  <meta charset="utf-8">
+  <title>chessboard-element &raquo; </title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="shortcut icon" href="/img/favicon.ico" type="image/x-icon" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:300,400,600|Roboto+Mono">
+  <link rel="stylesheet" href="/css/prism-okaidia.css">
+  <link rel="stylesheet" href="/css/site.css">
+</head>
+
+  <body>
+    <header>
+  <div class="body-width-115f6 flex-c31d5">
+    <div class="left-3edd4">
+      <a class="homepage-link-98a24" href="/">chessboard-element<span class="tld-bd9e6"></span></a>
+    </div>
+    <div class="right-05ad3">
+      <a href="/">Home</a>
+      <a  href="/examples/">Examples</a>
+      <a  href="/docs/">Docs</a>
+      <a  href="/download/">Download</a>
+    </div>
+  </div>
+</header>
+
+
+    <main>
+      <div class="body-width-115f6 page-529b3">
+
+      <section>
+        <h1 class="title-5ad05">Documentation</h1>
+        <ul class="toc-list-38a45">
+          <li><a href="#properties">Properties</a></li>
+          <li><a href="#methods">Methods</a></li>
+          <li><a href="#events">Events</a></li>
+          <li><a href="#css-properties">CSS Properties</a></li>
+          <li><a href="#css-parts">CSS Parts</a></li>
+          <li><a href="#position_object">Position Object</a></li>
+          <li><a href="#fen_string">FEN String</a></li>
+          <li><a href="#errors">Errors</a></li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 id="properties" class="hover-linkable"><a class="hover-link docs" href="#properties"></a>Properties</h2>
+        <table class="table-bc66e" cellspacing="0">
+          <thead class="center">
+            <tr>
+              <th>Property / Type</th>
+              <th>Default</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            
+            <tr id="property:position">
+              <td>
+                <p><a href="/docs/#property:position"><code class="js plain">position</code></a></p>
+                <p class=property-type-7ae66>PositionObject</p>
+              </td>
+              <td class="center">
+                
+              </td>
+              <td>
+                <p>The current position of the board, as a <code>PositionObject</code>. This property may<br>
+be set externally, but only to valid <code>PositionObject</code>s. The value is copied<br>
+before being applied to the board. Changes to the position object are not<br>
+reflected in th rendering.</p>
+<p>To set the position using FEN, or a keyword like <code>'start'</code>, or to use<br>
+animations, use the <code>setPosition</code> method.</p>
+
+              </td>
+            </tr>
+            
+            <tr id="property:hideNotation">
+              <td>
+                <p><a href="/docs/#property:hideNotation"><code class="js plain">hideNotation</code></a></p>
+                <p class=property-type-7ae66>boolean</p>
+              </td>
+              <td class="center">
+                false
+              </td>
+              <td>
+                <p>Whether to show the board notation.</p>
+
+              </td>
+            </tr>
+            
+            <tr id="property:showNotation">
+              <td>
+                <p><a href="/docs/#property:showNotation"><code class="js plain">showNotation</code></a></p>
+                <p class=property-type-7ae66>boolean</p>
+              </td>
+              <td class="center">
+                <p>true</p>
+
+              </td>
+              <td>
+                <p>Whether to show the board notation. This is always the inverse of<br>
+<code>hideNotation</code>, which reflects the <code>hide-notation</code> attribute.</p>
+
+              </td>
+            </tr>
+            
+            <tr id="property:orientation">
+              <td>
+                <p><a href="/docs/#property:orientation"><code class="js plain">orientation</code></a></p>
+                <p class=property-type-7ae66>SquareColor</p>
+              </td>
+              <td class="center">
+                <p>white</p>
+
+              </td>
+              <td>
+                <p>The orientation of the board. <code>'white'</code> for the white player at the bottom,<br>
+<code>'black'</code> for the black player at the bottom.</p>
+
+              </td>
+            </tr>
+            
+            <tr id="property:draggablePieces">
+              <td>
+                <p><a href="/docs/#property:draggablePieces"><code class="js plain">draggablePieces</code></a></p>
+                <p class=property-type-7ae66>boolean</p>
+              </td>
+              <td class="center">
+                false
+              </td>
+              <td>
+                <p>If <code>true</code>, pieces on the board are draggable to other squares.</p>
+
+              </td>
+            </tr>
+            
+            <tr id="property:dropOffBoard">
+              <td>
+                <p><a href="/docs/#property:dropOffBoard"><code class="js plain">dropOffBoard</code></a></p>
+                <p class=property-type-7ae66>OffBoardAction</p>
+              </td>
+              <td class="center">
+                <p>snapback</p>
+
+              </td>
+              <td>
+                <p>If <code>'snapback'</code>, pieces dropped off the board will return to their original<br>
+square. If <code>'trash'</code>, pieces dropped off the board will be removed from the<br>
+board.</p>
+<p>This property has no effect when <code>draggable</code> is <code>false</code>.</p>
+
+              </td>
+            </tr>
+            
+            <tr id="property:pieceTheme">
+              <td>
+                <p><a href="/docs/#property:pieceTheme"><code class="js plain">pieceTheme</code></a></p>
+                <p class=property-type-7ae66>string | ((piece: string) => string)</p>
+              </td>
+              <td class="center">
+                <p>wikipediaPiece</p>
+
+              </td>
+              <td>
+                <p>A template string used to determine the source of piece images. If<br>
+<code>pieceTheme</code> is a function the first argument is the piece code. The<br>
+function should return an <code>&lt;img&gt;</code> source.</p>
+
+              </td>
+            </tr>
+            
+            <tr id="property:moveSpeed">
+              <td>
+                <p><a href="/docs/#property:moveSpeed"><code class="js plain">moveSpeed</code></a></p>
+                <p class=property-type-7ae66>AnimationSpeed</p>
+              </td>
+              <td class="center">
+                200
+              </td>
+              <td>
+                <p>Animation speed for when pieces move between squares or from spare pieces<br>
+to the board.</p>
+
+              </td>
+            </tr>
+            
+            <tr id="property:snapbackSpeed">
+              <td>
+                <p><a href="/docs/#property:snapbackSpeed"><code class="js plain">snapbackSpeed</code></a></p>
+                <p class=property-type-7ae66>AnimationSpeed</p>
+              </td>
+              <td class="center">
+                60
+              </td>
+              <td>
+                <p>Animation speed for when pieces that were dropped outside the board return<br>
+to their original square.</p>
+
+              </td>
+            </tr>
+            
+            <tr id="property:snapSpeed">
+              <td>
+                <p><a href="/docs/#property:snapSpeed"><code class="js plain">snapSpeed</code></a></p>
+                <p class=property-type-7ae66>AnimationSpeed</p>
+              </td>
+              <td class="center">
+                30
+              </td>
+              <td>
+                <p>Animation speed for when pieces &quot;snap&quot; to a square when dropped.</p>
+
+              </td>
+            </tr>
+            
+            <tr id="property:trashSpeed">
+              <td>
+                <p><a href="/docs/#property:trashSpeed"><code class="js plain">trashSpeed</code></a></p>
+                <p class=property-type-7ae66>AnimationSpeed</p>
+              </td>
+              <td class="center">
+                100
+              </td>
+              <td>
+                <p>Animation speed for when pieces are removed.</p>
+
+              </td>
+            </tr>
+            
+            <tr id="property:appearSpeed">
+              <td>
+                <p><a href="/docs/#property:appearSpeed"><code class="js plain">appearSpeed</code></a></p>
+                <p class=property-type-7ae66>AnimationSpeed</p>
+              </td>
+              <td class="center">
+                200
+              </td>
+              <td>
+                <p>Animation speed for when pieces appear on a square.</p>
+<p>Note that the &quot;appear&quot; animation only occurs when <code>sparePieces</code> is <code>false</code>.</p>
+
+              </td>
+            </tr>
+            
+            <tr id="property:sparePieces">
+              <td>
+                <p><a href="/docs/#property:sparePieces"><code class="js plain">sparePieces</code></a></p>
+                <p class=property-type-7ae66>boolean</p>
+              </td>
+              <td class="center">
+                false
+              </td>
+              <td>
+                <p>If <code>true</code>, the board will have spare pieces that can be dropped onto the<br>
+board. If <code>sparePieces</code> is set to <code>true</code>, <code>draggablePieces</code> gets set to<br>
+<code>true</code> as well.</p>
+
+              </td>
+            </tr>
+            
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2 id="methods" class="hover-linkable"><a class="hover-link docs" href="#methods"></a>Methods</h2>
+        <table class="table-bc66e" cellspacing="0">
+          <thead class="center">
+            <tr>
+              <th>Method</th>
+              <th>Parameters</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            
+            <tr id="method:setPosition">
+              <td>
+                <p><a href="/docs/#method:setPosition"><code class="js plain">setPosition</code></a></p>
+              </td>
+              <td>
+                
+                  <ul>
+                  
+                    <li><code class="js plain">position</code>: Position
+                  
+                    <li><code class="js plain">useAnimation</code>: boolean
+                  
+                  </ul>
+                
+              </td>
+              <td>
+                <p>Sets the position of the board.</p>
+
+              </td>
+            </tr>
+            
+            <tr id="method:fen">
+              <td>
+                <p><a href="/docs/#method:fen"><code class="js plain">fen</code></a></p>
+              </td>
+              <td>
+                
+                  <ul>
+                  
+                  </ul>
+                
+              </td>
+              <td>
+                <p>Returns the current position as a FEN string.</p>
+
+              </td>
+            </tr>
+            
+            <tr id="method:start">
+              <td>
+                <p><a href="/docs/#method:start"><code class="js plain">start</code></a></p>
+              </td>
+              <td>
+                
+                  <ul>
+                  
+                    <li><code class="js plain">useAnimation</code>: boolean
+                  
+                  </ul>
+                
+              </td>
+              <td>
+                <p>Sets the board to the start position.</p>
+
+              </td>
+            </tr>
+            
+            <tr id="method:clear">
+              <td>
+                <p><a href="/docs/#method:clear"><code class="js plain">clear</code></a></p>
+              </td>
+              <td>
+                
+                  <ul>
+                  
+                    <li><code class="js plain">useAnimation</code>: boolean
+                  
+                  </ul>
+                
+              </td>
+              <td>
+                <p>Removes all the pieces on the board. If <code>useAnimation</code> is <code>false</code>, removes<br>
+pieces instantly.</p>
+<p>This is shorthand for <code>setPosition({})</code>.</p>
+
+              </td>
+            </tr>
+            
+            <tr id="method:move">
+              <td>
+                <p><a href="/docs/#method:move"><code class="js plain">move</code></a></p>
+              </td>
+              <td>
+                
+                  <ul>
+                  
+                    <li><code class="js plain">args</code>: (string | false)[]
+                  
+                  </ul>
+                
+              </td>
+              <td>
+                <p>Executes one or more moves on the board.</p>
+<p>Moves are strings the form of &quot;e2-e4&quot;, &quot;f6-d5&quot;, etc., Pass <code>false</code> as an<br>
+argument to disable animation.</p>
+
+              </td>
+            </tr>
+            
+            <tr id="method:flip">
+              <td>
+                <p><a href="/docs/#method:flip"><code class="js plain">flip</code></a></p>
+              </td>
+              <td>
+                
+                  <ul>
+                  
+                  </ul>
+                
+              </td>
+              <td>
+                <p>Flip the orientation.</p>
+
+              </td>
+            </tr>
+            
+            <tr id="method:resize">
+              <td>
+                <p><a href="/docs/#method:resize"><code class="js plain">resize</code></a></p>
+              </td>
+              <td>
+                
+                  <ul>
+                  
+                  </ul>
+                
+              </td>
+              <td>
+                <p>Recalculates board and square sizes based on the parent element and redraws<br>
+the board accordingly.</p>
+
+              </td>
+            </tr>
+            
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2 id="events" class="hover-linkable"><a class="hover-link docs" href="#events"></a>Events</h2>
+        <table class="table-bc66e" cellspacing="0">
+          <thead class="center">
+            <tr>
+              <th>Name</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            
+            <tr id="event:mouseover-square">
+              <td>
+                <p><a href="/docs/#event:mouseover-square"><code class="js plain">mouseover-square</code></a></p>
+                <p class=property-type-7ae66></p>
+              </td>
+              <td>
+                <p>Fired when the cursor is over a square<br>
+The event's <code>detail</code> object has the following properties:</p>
+<ul>
+<li><code>square</code>: the square that was entered</li>
+<li><code>piece</code>: the piece on that square (or <code>false</code> if there is no piece)</li>
+<li><code>position</code>: the current position</li>
+<li><code>orientation</code>: the current orientation.</li>
+</ul>
+<p>Note that <code>mouseover-square</code> will <em>not</em> fire during piece drag and drop.<br>
+Use <code>drag-move</code> instead.</p>
+
+              </td>
+            </tr>
+            
+            <tr id="event:mouseout-square">
+              <td>
+                <p><a href="/docs/#event:mouseout-square"><code class="js plain">mouseout-square</code></a></p>
+                <p class=property-type-7ae66></p>
+              </td>
+              <td>
+                <p>Fired when the cursor exits a square<br>
+The event's <code>detail</code> object has the following properties:<br>
+<code>square</code>: the square that was left<br>
+<code>piece</code>: the piece on that square (or <code>false</code> if there is no piece)<br>
+<code>position</code>: the current position<br>
+<code>orientation</code>: the current orientation.</p>
+<p>Note that <code>mouseout-square</code> will <em>not</em> fire during piece drag and drop.<br>
+Use <code>drag-move</code> instead.</p>
+
+              </td>
+            </tr>
+            
+            <tr id="event:snapback-end">
+              <td>
+                <p><a href="/docs/#event:snapback-end"><code class="js plain">snapback-end</code></a></p>
+                <p class=property-type-7ae66></p>
+              </td>
+              <td>
+                <p>Fired when the snapback animation is complete when<br>
+pieces are dropped off the board.<br>
+The event's <code>detail</code> object has the following properties:</p>
+<ul>
+<li><code>piece</code>: the dragged piece</li>
+<li><code>square</code>: the square the piece returned to</li>
+<li><code>position</code>: the current position</li>
+<li><code>orientation</code>: the current orientation.</li>
+</ul>
+
+              </td>
+            </tr>
+            
+            <tr id="event:snap-end">
+              <td>
+                <p><a href="/docs/#event:snap-end"><code class="js plain">snap-end</code></a></p>
+                <p class=property-type-7ae66></p>
+              </td>
+              <td>
+                <p>Fired when a piece completes a snap animation<br>
+The event's <code>detail</code> object has the following properties:</p>
+<ul>
+<li><code>source</code>: the source of the dragged piece</li>
+<li><code>square</code>: the target of the dragged piece</li>
+<li><code>piece</code>: the dragged piece</li>
+</ul>
+
+              </td>
+            </tr>
+            
+            <tr id="event:drag-start">
+              <td>
+                <p><a href="/docs/#event:drag-start"><code class="js plain">drag-start</code></a></p>
+                <p class=property-type-7ae66></p>
+              </td>
+              <td>
+                <p>Fired when a piece is picked up<br>
+The event's <code>detail</code> object has the following properties:</p>
+<ul>
+<li><code>source</code>: the source of the piece</li>
+<li><code>piece</code>: the piece</li>
+<li><code>position</code>: the current position on the board</li>
+<li><code>orientation</code>: the current orientation.</li>
+</ul>
+<p>The drag action is prevented if the listener calls <code>event.preventDefault()</code>.</p>
+
+              </td>
+            </tr>
+            
+            <tr id="event:drag-move">
+              <td>
+                <p><a href="/docs/#event:drag-move"><code class="js plain">drag-move</code></a></p>
+                <p class=property-type-7ae66></p>
+              </td>
+              <td>
+                <p>Fired when a user-initiated drag moves<br>
+The event's <code>detail</code> object has the following properties:</p>
+<ul>
+<li><code>newLocation</code>: the new location of the piece</li>
+<li><code>oldLocation</code>: the old location of the piece</li>
+<li><code>source</code>: the source of the dragged piece</li>
+<li><code>piece</code>: the piece</li>
+<li><code>position</code>: the current position on the board</li>
+<li><code>orientation</code>: the current orientation.</li>
+</ul>
+
+              </td>
+            </tr>
+            
+            <tr id="event:drop">
+              <td>
+                <p><a href="/docs/#event:drop"><code class="js plain">drop</code></a></p>
+                <p class=property-type-7ae66></p>
+              </td>
+              <td>
+                <p>Fired when a user-initiated drag ends<br>
+The event's <code>detail</code> object has the following properties:</p>
+<ul>
+<li><code>source</code>: the source of the dragged piece</li>
+<li><code>target</code>: the target of the dragged piece</li>
+<li><code>piece</code>: the piece</li>
+<li><code>newPosition</code>: the new position once the piece drops</li>
+<li><code>oldPosition</code>: the old position before the piece was picked up</li>
+<li><code>orientation</code>: the current orientation.</li>
+<li><code>setAction(action)</code>: a function to call to change the default action.<br>
+If <code>'snapback'</code> is passed to <code>setAction</code>, the piece will return to it's source square.<br>
+If <code>'trash'</code> is passed to <code>setAction</code>, the piece will be removed.</li>
+</ul>
+
+              </td>
+            </tr>
+            
+            <tr id="event:move-end">
+              <td>
+                <p><a href="/docs/#event:move-end"><code class="js plain">move-end</code></a></p>
+                <p class=property-type-7ae66></p>
+              </td>
+              <td>
+                <p>Fired when a piece move completes<br>
+The event's <code>detail</code> object has the following properties:</p>
+<ul>
+<li><code>oldPosition</code>: the old position</li>
+<li><code>newPosition</code>: the new position</li>
+</ul>
+
+              </td>
+            </tr>
+            
+            <tr id="event:change">
+              <td>
+                <p><a href="/docs/#event:change"><code class="js plain">change</code></a></p>
+                <p class=property-type-7ae66></p>
+              </td>
+              <td>
+                <p>Fired when the board position changes<br>
+The event's <code>detail</code> property has two properties:</p>
+<ul>
+<li><code>value</code>: the new position</li>
+<li><code>oldValue</code>: the old position</li>
+</ul>
+<p><strong>Warning</strong>: do <em>not</em> call any position-changing methods in your event<br>
+listener or you may cause an infinite loop. Position-changing methods<br>
+are: <code>clear()</code>, <code>move()</code>, <code>position()</code>, and <code>start()</code>.</p>
+
+              </td>
+            </tr>
+            
+            <tr id="event:error">
+              <td>
+                <p><a href="/docs/#event:error"><code class="js plain">error</code></a></p>
+                <p class=property-type-7ae66></p>
+              </td>
+              <td>
+                <p>Fired in the case of invalid attributes.</p>
+
+              </td>
+            </tr>
+            
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2 id="css-properties" class="hover-linkable"><a class="hover-link docs" href="#css-properties"></a>CSS Properties</h2>
+        <table class="table-bc66e" cellspacing="0">
+          <thead class="center">
+            <tr>
+              <th>Name</th>
+              <th>Description</th>
+              <th>Default</th>
+            </tr>
+          </thead>
+          <tbody>
+            
+            <tr id="css-property:--light-color">
+              <td>
+                <a href="/docs/#css-property:--light-color"><code class="js plain">--light-color</code></a>
+              </td>
+              <td>
+                <p>The background for white squares and text color for black squares</p>
+
+              </td>
+              <td>
+                <p>#f0d9b5</p>
+
+              </td>
+            </tr>
+            
+            <tr id="css-property:--dark-color">
+              <td>
+                <a href="/docs/#css-property:--dark-color"><code class="js plain">--dark-color</code></a>
+              </td>
+              <td>
+                <p>The background for black squares and text color for white squares</p>
+
+              </td>
+              <td>
+                <p>#b58863</p>
+
+              </td>
+            </tr>
+            
+            <tr id="css-property:--highlight-color">
+              <td>
+                <a href="/docs/#css-property:--highlight-color"><code class="js plain">--highlight-color</code></a>
+              </td>
+              <td>
+                <p>The highlight color</p>
+
+              </td>
+              <td>
+                <p>yellow</p>
+
+              </td>
+            </tr>
+            
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2 id="css-parts" class="hover-linkable"><a class="hover-link docs" href="#css-parts"></a>CSS Parts</h2>
+        <table class="table-bc66e" cellspacing="0">
+          <thead class="center">
+            <tr>
+              <th>Name</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            
+            <tr id="css-part:board">
+              <td>
+                <a href="/docs/#css-part:board"><code class="js plain">board</code></a>
+              </td>
+              <td>
+                <p>The chess board</p>
+
+              </td>
+            </tr>
+            
+            <tr id="css-part:square">
+              <td>
+                <a href="/docs/#css-part:square"><code class="js plain">square</code></a>
+              </td>
+              <td>
+                <p>A square on the board</p>
+
+              </td>
+            </tr>
+            
+            <tr id="css-part:piece">
+              <td>
+                <a href="/docs/#css-part:piece"><code class="js plain">piece</code></a>
+              </td>
+              <td>
+                <p>A chess piece</p>
+
+              </td>
+            </tr>
+            
+            <tr id="css-part:spare-pieces">
+              <td>
+                <a href="/docs/#css-part:spare-pieces"><code class="js plain">spare-pieces</code></a>
+              </td>
+              <td>
+                <p>The spare piece container</p>
+
+              </td>
+            </tr>
+            
+            <tr id="css-part:dragged-piece">
+              <td>
+                <a href="/docs/#css-part:dragged-piece"><code class="js plain">dragged-piece</code></a>
+              </td>
+              <td>
+                <p>The currently dragged piece</p>
+
+              </td>
+            </tr>
+            
+            <tr id="css-part:white">
+              <td>
+                <a href="/docs/#css-part:white"><code class="js plain">white</code></a>
+              </td>
+              <td>
+                <p>A white square</p>
+
+              </td>
+            </tr>
+            
+            <tr id="css-part:black">
+              <td>
+                <a href="/docs/#css-part:black"><code class="js plain">black</code></a>
+              </td>
+              <td>
+                <p>A black square</p>
+
+              </td>
+            </tr>
+            
+            <tr id="css-part:highlight">
+              <td>
+                <a href="/docs/#css-part:highlight"><code class="js plain">highlight</code></a>
+              </td>
+              <td>
+                <p>A highlighted square</p>
+
+              </td>
+            </tr>
+            
+            <tr id="css-part:notation">
+              <td>
+                <a href="/docs/#css-part:notation"><code class="js plain">notation</code></a>
+              </td>
+              <td>
+                <p>The square location labels</p>
+
+              </td>
+            </tr>
+            
+            <tr id="css-part:alpha">
+              <td>
+                <a href="/docs/#css-part:alpha"><code class="js plain">alpha</code></a>
+              </td>
+              <td>
+                <p>The alpha (column) labels</p>
+
+              </td>
+            </tr>
+            
+            <tr id="css-part:numeric">
+              <td>
+                <a href="/docs/#css-part:numeric"><code class="js plain">numeric</code></a>
+              </td>
+              <td>
+                <p>The numeric (row) labels</p>
+
+              </td>
+            </tr>
+            
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2 id="position_object" class="hover-linkable"><a class="hover-link docs" href="#position_object"></a>Position Object</h2>
+        <p>You can use a JavaScript object to represent a board position.</p>
+        <p>The object property names must be algebraic squares (ie: e4, b2, c6, etc) and the values must be a valid piece codes (ie: wP, bK, wQ, etc).</p>
+        <p>See an example of using an object to represent a position <a href="examples.html#1003">here</a>.</p>
+        <p>Chessboard.js exposes the <a href="examples.html#4000"><code class="js plain">Chessboard.objToFen</code></a> method to help convert between Position Objects and <a href="docs.html#fen_string">FEN Strings</a>.</p>
+      </section>
+
+      <section>
+        <h2 id="fen_string" class="hover-linkable"><a class="hover-link docs" href="#fen_string"></a>FEN String</h2>
+        <p>You can use <a href="http://en.wikipedia.org/wiki/Forsyth%E2%80%93Edwards_Notation">Forsyth-Edwards Notation (FEN)</a> to represent a board position.</p>
+        <p>Note that FEN notation captures more information than chessboard-element requires, like who's move it is and whether or not castling is allowed. This information will be ignored; only the position information is used.</p>
+        <p>See an example of using a FEN String to represent a position <a href="examples.html#1002">here</a> and <a href="examples.html#1004">here</a>.</p>
+        <p>Chessboard.js exposes the <code class="js plain">Chessboard.fenToObj</code> method to help convert a FEN String to a <a href="docs.html#position_object">Position Object</a>.</p>
+      </section>
+
+      </div>
+    </main>
+
+    <footer>
+  <div class="body-width-115f6 flex-c31d5">
+    <div class="left-3edd4">
+      <p>chessboard-element is released under the <a href="https://github.com/justinfagnani/chessboard-element/blob/master/LICENSE.md">MIT License</a></p>
+      <p>the code can be found on <a href="https://github.com/justinfagnani/chessboard-element/">GitHub</a></p>
+      <p>chessboard-element is a fork of the awesome <a href="https://github.com/oakmac/chessboardjs/">chessboard.js</a> project by Chris Oakman</p>
+    </div>
+  </div>
+</footer>
+
+
+  </body>
+</html>

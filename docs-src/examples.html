@@ -1,0 +1,55 @@
+<!doctype html>
+<html>
+  {% include "head.html" %}
+  <body>
+    {% include "header.html" %}
+    <script type="module" src="/js/chessboard-element.bundled.js"></script>
+    <script src="/js/chess-0.10.2.min.js" defer></script>
+
+    <main>
+      <div class="body-width-115f6 flex-c31d5 examples-c30bc">
+        <nav class="example-nav-0e953" id="examplesNav">
+          {% for group, examples in collections.examples | groupby(util.getPath('data.group')) %}
+          <h4 class="groupHeader-1">{{ group }}</h4>
+          <ul class="groupContainer-1">
+            {% for example in examples %}
+            <li><a href="{{ example.url }}">{{ example.data.title }}</a></li>
+            {% endfor %}
+          </ul>
+          {% endfor %}
+        </nav>
+        {# TODO: depdupe with example.html #}
+        <div class="examples-body-9af4d" id="exampleBodyContainer">
+          <p></p>
+          <p>Chessboard.js initializes to an empty board with no second argument.</p>
+          <div class="container-4e1ee">
+            <!-- Begin Example HTML -->
+            {% include "examples/1000-empty-board.md" | htmlPath %}
+            <!-- End Example HTML ---->
+          </div>
+          <h4>HTML</h4>
+          {% highlight "html" %}
+            {% include "examples/1000-empty-board.md" | htmlPath %}
+          {% endhighlight %}
+
+          {% if "examples/1000-empty-board.md" | jsPath | fileExists %}
+          <h4>JavaScript</h4>
+          {% highlight "js" %}
+            {% include "examples/1000-empty-board.md" | jsPath %}
+          {% endhighlight %}
+
+          <script>
+          // Begin Example JS
+          {% include page.inputPath | jsPath %}
+          // End Example JS
+          </script>
+
+          {% endif %}
+        </div>
+      </div>
+    </main>
+
+    {% include "footer.html" %}
+
+  </body>
+</html>

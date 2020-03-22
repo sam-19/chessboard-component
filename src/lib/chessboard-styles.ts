@@ -10,6 +10,9 @@ import {css} from 'lit-element';
 export const styles = css`
   :host {
     display: block;
+    --light-color: #f0d9b5;
+    --dark-color: #b58863;
+    --highlight-color: yellow;
   }
 
   [part~='board'] {
@@ -51,17 +54,17 @@ export const styles = css`
   }
 
   [part~='white'] {
-    background-color: #f0d9b5;
-    color: #b58863;
+    background-color: var(--light-color);
+    color: var(--dark-color);
   }
 
   [part~='black'] {
-    background-color: #b58863;
-    color: #f0d9b5;
+    background-color: var(--dark-color);
+    color: var(--light-color);
   }
 
   [part~='highlight'] {
-    box-shadow: inset 0 0 3px 3px yellow;
+    box-shadow: inset 0 0 3px 3px var(--highlight-color);
   }
 
   [part~='notation'] {

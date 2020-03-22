@@ -1,0 +1,19 @@
+{
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "build": "eleventy",
+    "build:ts": "tsc",
+    "serve": "es-dev-server --root-dir=../docs --node-resolve --watch"
+  },
+  "dependencies": {
+    "@11ty/eleventy": "^0.10.0",
+    "@11ty/eleventy-plugin-syntaxhighlight": "^3.0.1",
+    "@types/node": "^13.7.0",
+    "es-dev-server": "^1.36.4",
+    "prismjs": "^1.19.0"
+  },
+  "devDependencies": {
+    "typescript": "^3.7.5"
+  }
+}

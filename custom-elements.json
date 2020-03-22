@@ -3,6 +3,8 @@
   "tags": [
     {
       "name": "chess-board",
+      "path": "./src/lib/chessboard-element.ts",
+      "description": "A custom element that renders an interactive chess board.",
       "attributes": [
         {
           "name": "position",
@@ -11,56 +13,67 @@
         },
         {
           "name": "hide-notation",
+          "description": "Whether to show the board notation.",
           "type": "boolean",
           "default": "false"
         },
         {
           "name": "orientation",
+          "description": "The orientation of the board. `'white'` for the white player at the bottom,\n`'black'` for the black player at the bottom.",
           "type": "SquareColor",
           "default": "\"white\""
         },
         {
           "name": "draggable-pieces",
+          "description": "If `true`, pieces on the board are draggable to other squares.",
           "type": "boolean",
           "default": "false"
         },
         {
           "name": "drop-off-board",
+          "description": "If `'snapback'`, pieces dropped off the board will return to their original\nsquare. If `'trash'`, pieces dropped off the board will be removed from the\nboard.\n\nThis property has no effect when `draggable` is `false`.",
           "type": "OffBoardAction",
           "default": "\"snapback\""
         },
         {
           "name": "piece-theme",
+          "description": "A template string used to determine the source of piece images. If\n`pieceTheme` is a function the first argument is the piece code. The\nfunction should return an `<img>` source.",
           "type": "string | ((piece: string) => string)",
           "default": "\"wikipediaPiece\""
         },
         {
           "name": "move-speed",
+          "description": "Animation speed for when pieces move between squares or from spare pieces\nto the board.",
           "type": "AnimationSpeed",
           "default": "200"
         },
         {
           "name": "snapback-speed",
+          "description": "Animation speed for when pieces that were dropped outside the board return\nto their original square.",
           "type": "AnimationSpeed",
           "default": "60"
         },
         {
           "name": "snap-speed",
+          "description": "Animation speed for when pieces \\\"snap\\\" to a square when dropped.",
           "type": "AnimationSpeed",
           "default": "30"
         },
         {
           "name": "trash-speed",
+          "description": "Animation speed for when pieces are removed.",
           "type": "AnimationSpeed",
           "default": "100"
         },
         {
           "name": "appear-speed",
+          "description": "Animation speed for when pieces appear on a square.\n\nNote that the \"appear\" animation only occurs when `sparePieces` is `false`.",
           "type": "AnimationSpeed",
           "default": "200"
         },
         {
           "name": "spare-pieces",
+          "description": "If `true`, the board will have spare pieces that can be dropped onto the\nboard. If `sparePieces` is set to `true`, `draggablePieces` gets set to\n`true` as well.",
           "type": "boolean",
           "default": "false"
         }
@@ -75,101 +88,190 @@
         {
           "name": "hideNotation",
           "attribute": "hide-notation",
+          "description": "Whether to show the board notation.",
           "type": "boolean",
           "default": "false"
         },
         {
           "name": "showNotation",
-          "type": "boolean"
+          "description": "Whether to show the board notation. This is always the inverse of\n`hideNotation`, which reflects the `hide-notation` attribute.",
+          "type": "boolean",
+          "default": "\"true\""
         },
         {
           "name": "orientation",
           "attribute": "orientation",
+          "description": "The orientation of the board. `'white'` for the white player at the bottom,\n`'black'` for the black player at the bottom.",
           "type": "SquareColor",
           "default": "\"white\""
         },
         {
           "name": "draggablePieces",
           "attribute": "draggable-pieces",
+          "description": "If `true`, pieces on the board are draggable to other squares.",
           "type": "boolean",
           "default": "false"
         },
         {
           "name": "dropOffBoard",
           "attribute": "drop-off-board",
+          "description": "If `'snapback'`, pieces dropped off the board will return to their original\nsquare. If `'trash'`, pieces dropped off the board will be removed from the\nboard.\n\nThis property has no effect when `draggable` is `false`.",
           "type": "OffBoardAction",
           "default": "\"snapback\""
         },
         {
           "name": "pieceTheme",
           "attribute": "piece-theme",
+          "description": "A template string used to determine the source of piece images. If\n`pieceTheme` is a function the first argument is the piece code. The\nfunction should return an `<img>` source.",
           "type": "string | ((piece: string) => string)",
           "default": "\"wikipediaPiece\""
         },
         {
           "name": "moveSpeed",
           "attribute": "move-speed",
+          "description": "Animation speed for when pieces move between squares or from spare pieces\nto the board.",
           "type": "AnimationSpeed",
           "default": "200"
         },
         {
           "name": "snapbackSpeed",
           "attribute": "snapback-speed",
+          "description": "Animation speed for when pieces that were dropped outside the board return\nto their original square.",
           "type": "AnimationSpeed",
           "default": "60"
         },
         {
           "name": "snapSpeed",
           "attribute": "snap-speed",
+          "description": "Animation speed for when pieces \\\"snap\\\" to a square when dropped.",
           "type": "AnimationSpeed",
           "default": "30"
         },
         {
           "name": "trashSpeed",
           "attribute": "trash-speed",
+          "description": "Animation speed for when pieces are removed.",
           "type": "AnimationSpeed",
           "default": "100"
         },
         {
           "name": "appearSpeed",
           "attribute": "appear-speed",
+          "description": "Animation speed for when pieces appear on a square.\n\nNote that the \"appear\" animation only occurs when `sparePieces` is `false`.",
           "type": "AnimationSpeed",
           "default": "200"
         },
         {
           "name": "sparePieces",
           "attribute": "spare-pieces",
+          "description": "If `true`, the board will have spare pieces that can be dropped onto the\nboard. If `sparePieces` is set to `true`, `draggablePieces` gets set to\n`true` as well.",
           "type": "boolean",
           "default": "false"
         }
       ],
       "events": [
         {
-          "name": "mouseover-square"
+          "name": "mouseover-square",
+          "description": "Fired when the cursor is over a square\nThe event's `detail` object has the following properties:\n* `square`: the square that was entered\n* `piece`: the piece on that square (or `false` if there is no piece)\n* `position`: the current position\n* `orientation`: the current orientation.\n\nNote that `mouseover-square` will *not* fire during piece drag and drop.\nUse `drag-move` instead."
         },
         {
-          "name": "mouseout-square"
+          "name": "mouseout-square",
+          "description": "Fired when the cursor exits a square\nThe event's `detail` object has the following properties:\n`square`: the square that was left\n`piece`: the piece on that square (or `false` if there is no piece)\n`position`: the current position\n`orientation`: the current orientation.\n\nNote that `mouseout-square` will *not* fire during piece drag and drop.\nUse `drag-move` instead."
         },
         {
-          "name": "change"
+          "name": "snapback-end",
+          "description": "Fired when the snapback animation is complete when\npieces are dropped off the board.\nThe event's `detail` object has the following properties:\n* `piece`: the dragged piece\n* `square`: the square the piece returned to\n* `position`: the current position\n* `orientation`: the current orientation."
         },
         {
-          "name": "snapback-end"
+          "name": "snap-end",
+          "description": "Fired when a piece completes a snap animation\nThe event's `detail` object has the following properties:\n* `source`: the source of the dragged piece\n* `square`: the target of the dragged piece\n* `piece`: the dragged piece"
         },
         {
-          "name": "snap-end"
+          "name": "drag-start",
+          "description": "Fired when a piece is picked up\nThe event's `detail` object has the following properties:\n* `source`: the source of the piece\n* `piece`: the piece\n* `position`: the current position on the board\n* `orientation`: the current orientation.\n\nThe drag action is prevented if the listener calls `event.preventDefault()`."
         },
         {
-          "name": "drag-start"
+          "name": "drag-move",
+          "description": "Fired when a user-initiated drag moves\nThe event's `detail` object has the following properties:\n* `newLocation`: the new location of the piece\n* `oldLocation`: the old location of the piece\n* `source`: the source of the dragged piece\n* `piece`: the piece\n* `position`: the current position on the board\n* `orientation`: the current orientation."
         },
         {
-          "name": "drag-move"
+          "name": "drop",
+          "description": "Fired when a user-initiated drag ends\nThe event's `detail` object has the following properties:\n* `source`: the source of the dragged piece\n* `target`: the target of the dragged piece\n* `piece`: the piece\n* `newPosition`: the new position once the piece drops\n* `oldPosition`: the old position before the piece was picked up\n* `orientation`: the current orientation.\n* `setAction(action)`: a function to call to change the default action.\n If `'snapback'` is passed to `setAction`, the piece will return to it's source square.\n If `'trash'` is passed to `setAction`, the piece will be removed."
         },
         {
-          "name": "drop"
+          "name": "move-end",
+          "description": "Fired when a piece move completes\nThe event's `detail` object has the following properties:\n* `oldPosition`: the old position\n* `newPosition`: the new position"
         },
         {
-          "name": "move-end"
+          "name": "change",
+          "description": "Fired when the board position changes\nThe event's `detail` property has two properties:\n* `value`: the new position\n* `oldValue`: the old position\n\n**Warning**: do *not* call any position-changing methods in your event\nlistener or you may cause an infinite loop. Position-changing methods\nare: `clear()`, `move()`, `position()`, and `start()`."
+        },
+        {
+          "name": "error",
+          "description": "Fired in the case of invalid attributes."
+        }
+      ],
+      "cssProperties": [
+        {
+          "name": "--light-color",
+          "description": "The background for white squares and text color for black squares",
+          "default": "\"#f0d9b5\""
+        },
+        {
+          "name": "--dark-color",
+          "description": "The background for black squares and text color for white squares",
+          "default": "\"#b58863\""
+        },
+        {
+          "name": "--highlight-color",
+          "description": "The highlight color",
+          "default": "\"yellow\""
+        }
+      ],
+      "cssParts": [
+        {
+          "name": "board",
+          "description": "The chess board"
+        },
+        {
+          "name": "square",
+          "description": "A square on the board"
+        },
+        {
+          "name": "piece",
+          "description": "A chess piece"
+        },
+        {
+          "name": "spare-pieces",
+          "description": "The spare piece container"
+        },
+        {
+          "name": "dragged-piece",
+          "description": "The currently dragged piece"
+        },
+        {
+          "name": "white",
+          "description": "A white square"
+        },
+        {
+          "name": "black",
+          "description": "A black square"
+        },
+        {
+          "name": "highlight",
+          "description": "A highlighted square"
+        },
+        {
+          "name": "notation",
+          "description": "The square location labels"
+        },
+        {
+          "name": "alpha",
+          "description": "The alpha (column) labels"
+        },
+        {
+          "name": "numeric",
+          "description": "The numeric (row) labels"
         }
       ]
     }

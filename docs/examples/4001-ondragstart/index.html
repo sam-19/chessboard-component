@@ -1,0 +1,192 @@
+<!doctype html>
+<html>
+  <head>
+  <meta charset="utf-8">
+  <title>chessboard-element &raquo; drag-start</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="shortcut icon" href="/img/favicon.ico" type="image/x-icon" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:300,400,600|Roboto+Mono">
+  <link rel="stylesheet" href="/css/prism-okaidia.css">
+  <link rel="stylesheet" href="/css/site.css">
+</head>
+
+  <!-- <title>chessboard-element Example #4001 - drag-start</title> -->
+  <body>
+    <header>
+  <div class="body-width-115f6 flex-c31d5">
+    <div class="left-3edd4">
+      <a class="homepage-link-98a24" href="/">chessboard-element<span class="tld-bd9e6"></span></a>
+    </div>
+    <div class="right-05ad3">
+      <a href="/">Home</a>
+      <a  href="/examples/">Examples</a>
+      <a  href="/docs/">Docs</a>
+      <a  href="/download/">Download</a>
+    </div>
+  </div>
+</header>
+
+    <script type="module" src="/js/chessboard-element.bundled.js"></script>
+    <script src="/js/chess-0.10.2.min.js"></script>
+
+    <main>
+      <div class="body-width-115f6 flex-c31d5 examples-c30bc">
+        <nav class="example-nav-0e953" id="examplesNav">
+          
+          <h4>Basic Usage</h4>
+          <ul>
+            
+            <li ><a href="/examples/1000-empty-board/">Empty Board</a></li>
+            
+            <li ><a href="/examples/1001-start-position/">Start Position</a></li>
+            
+            <li ><a href="/examples/1002-fen/">FEN String</a></li>
+            
+            <li ><a href="/examples/1003-position-object/">Position Object</a></li>
+            
+            <li ><a href="/examples/1004-multiple-boards/">Multiple Boards</a></li>
+            
+          </ul>
+          
+          <h4>Config</h4>
+          <ul>
+            
+            <li ><a href="/examples/2000-config-position/">Start Position</a></li>
+            
+            <li ><a href="/examples/2001-config-orientation/">Orientation</a></li>
+            
+            <li ><a href="/examples/2002-config-notation/">Notation</a></li>
+            
+            <li ><a href="/examples/2003-draggable-snapback/">Draggable Snapback</a></li>
+            
+            <li ><a href="/examples/2004-piece-theme-string/">Piece Theme String</a></li>
+            
+            <li ><a href="/examples/2005-animation-speed/">Animation Speed</a></li>
+            
+            <li ><a href="/examples/2006-spare-pieces/">Spare Pieces</a></li>
+            
+            <li ><a href="/examples/2030-piece-theme-function/">Piece Theme Function</a></li>
+            
+            <li ><a href="/examples/2044-position-fen/">Position FEN</a></li>
+            
+            <li ><a href="/examples/2063-position-object/">Position Object</a></li>
+            
+            <li ><a href="/examples/2082-draggable-trash/">Draggable Trash</a></li>
+            
+          </ul>
+          
+          <h4>Methods</h4>
+          <ul>
+            
+            <li ><a href="/examples/3000-get-position/">Get Position</a></li>
+            
+            <li ><a href="/examples/3001-set-position/">Set Position</a></li>
+            
+            <li ><a href="/examples/3002-set-position-instant/">Set Position Instantly</a></li>
+            
+            <li ><a href="/examples/3003-clear/">Clear Board</a></li>
+            
+            <li ><a href="/examples/3004-move-pieces/">Move Pieces</a></li>
+            
+            <li ><a href="/examples/3005-orientation/">Orientation</a></li>
+            
+            <li ><a href="/examples/3007-resize/">Resize</a></li>
+            
+          </ul>
+          
+          <h4>Events</h4>
+          <ul>
+            
+            <li ><a href="/examples/4000-onchange/">change</a></li>
+            
+            <li class="active"><a href="/examples/4001-ondragstart/">drag-start</a></li>
+            
+            <li ><a href="/examples/4002-ondragstart-prevent-drag/">drag-start Prevent Drag</a></li>
+            
+            <li ><a href="/examples/4003-ondragmove/">drag-move</a></li>
+            
+            <li ><a href="/examples/4004-ondrop/">drop</a></li>
+            
+            <li ><a href="/examples/4005-ondrop-snapback/">drop Snapback</a></li>
+            
+            <li ><a href="/examples/4006-ondrop-trash/">drop Trash</a></li>
+            
+            <li ><a href="/examples/4011-onsnapbackend/">snapback-end</a></li>
+            
+            <li ><a href="/examples/4012-onmoveend/">move-end</a></li>
+            
+          </ul>
+          
+          <h4>Integration</h4>
+          <ul>
+            
+            <li ><a href="/examples/5000-legal-moves/">Only Allow Legal Moves</a></li>
+            
+            <li ><a href="/examples/5001-play-random-computer/">Play Random Computer</a></li>
+            
+            <li ><a href="/examples/5002-random-vs-random/">Random vs Random</a></li>
+            
+            <li ><a href="/examples/5003-highlight-legal-moves/">Highlight Legal Moves</a></li>
+            
+            <li ><a href="/examples/5004-piece-highlight1/">Piece Highlighting 1</a></li>
+            
+            <li ><a href="/examples/5005-piece-highlight2/">Piece Highlighting 2</a></li>
+            
+          </ul>
+          
+        </nav>
+        <div class="examples-body-9af4d" id="exampleBodyContainer">
+          <h2>drag-start</h2>          
+          <p><p>The <a href="docs.html#event:drag-start"><code class="js plain">drag-start</code></a> event fires every time a piece is picked up.</p>
+</p>
+          <div class="container-4e1ee">
+            <!-- Begin Example HTML -->
+            <chess-board
+    style="width: 400px"
+    position="start"
+    draggable-pieces
+    spare-pieces>
+</chess-board>
+            <!-- End Example HTML ---->
+          </div>
+          <h4>HTML</h4>
+          <pre class="language-html"><code class="language-html"><span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>chess-board</span><span class="token style-attr language-css"><span class="token attr-name"><br>    <span class="token attr-name">style</span></span><span class="token punctuation">="</span><span class="token attr-value"><span class="token property">width</span><span class="token punctuation">:</span> 400px</span><span class="token punctuation">"</span></span><br>    <span class="token attr-name">position</span><span class="token attr-value"><span class="token punctuation">=</span><span class="token punctuation">"</span>start<span class="token punctuation">"</span></span><br>    <span class="token attr-name">draggable-pieces</span><br>    <span class="token attr-name">spare-pieces</span><span class="token punctuation">></span></span><br><span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>chess-board</span><span class="token punctuation">></span></span></code></pre>
+
+          
+          <h4>JavaScript</h4>
+          <pre class="language-js"><code class="language-js"><span class="token keyword">const</span> board <span class="token operator">=</span> document<span class="token punctuation">.</span><span class="token function">querySelector</span><span class="token punctuation">(</span><span class="token string">'chess-board'</span><span class="token punctuation">)</span><span class="token punctuation">;</span><br><br>board<span class="token punctuation">.</span><span class="token function">addEventListener</span><span class="token punctuation">(</span><span class="token string">'drag-start'</span><span class="token punctuation">,</span> <span class="token punctuation">(</span><span class="token parameter">e</span><span class="token punctuation">)</span> <span class="token operator">=></span> <span class="token punctuation">{</span><br>  <span class="token keyword">const</span> <span class="token punctuation">{</span>source<span class="token punctuation">,</span> piece<span class="token punctuation">,</span> position<span class="token punctuation">,</span> orientation<span class="token punctuation">}</span> <span class="token operator">=</span> e<span class="token punctuation">.</span>detail<span class="token punctuation">;</span><br>  console<span class="token punctuation">.</span><span class="token function">log</span><span class="token punctuation">(</span><span class="token string">'Drag started:'</span><span class="token punctuation">)</span><br>  console<span class="token punctuation">.</span><span class="token function">log</span><span class="token punctuation">(</span><span class="token string">'Source: '</span> <span class="token operator">+</span> source<span class="token punctuation">)</span><br>  console<span class="token punctuation">.</span><span class="token function">log</span><span class="token punctuation">(</span><span class="token string">'Piece: '</span> <span class="token operator">+</span> piece<span class="token punctuation">)</span><br>  console<span class="token punctuation">.</span><span class="token function">log</span><span class="token punctuation">(</span><span class="token string">'Position: '</span> <span class="token operator">+</span> chessUtils<span class="token punctuation">.</span><span class="token function">objToFen</span><span class="token punctuation">(</span>position<span class="token punctuation">)</span><span class="token punctuation">)</span><br>  console<span class="token punctuation">.</span><span class="token function">log</span><span class="token punctuation">(</span><span class="token string">'Orientation: '</span> <span class="token operator">+</span> orientation<span class="token punctuation">)</span><br>  console<span class="token punctuation">.</span><span class="token function">log</span><span class="token punctuation">(</span><span class="token string">'~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'</span><span class="token punctuation">)</span><br><span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code></pre>
+
+          <script>
+          // Begin Example JS
+          const board = document.querySelector('chess-board');
+
+board.addEventListener('drag-start', (e) => {
+  const {source, piece, position, orientation} = e.detail;
+  console.log('Drag started:')
+  console.log('Source: ' + source)
+  console.log('Piece: ' + piece)
+  console.log('Position: ' + chessUtils.objToFen(position))
+  console.log('Orientation: ' + orientation)
+  console.log('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
+});
+          // End Example JS
+          </script>
+
+          
+        </div>
+      </div>
+    </main>
+
+    <footer>
+  <div class="body-width-115f6 flex-c31d5">
+    <div class="left-3edd4">
+      <p>chessboard-element is released under the <a href="https://github.com/justinfagnani/chessboard-element/blob/master/LICENSE.md">MIT License</a></p>
+      <p>the code can be found on <a href="https://github.com/justinfagnani/chessboard-element/">GitHub</a></p>
+      <p>chessboard-element is a fork of the awesome <a href="https://github.com/oakmac/chessboardjs/">chessboard.js</a> project by Chris Oakman</p>
+    </div>
+  </div>
+</footer>
+
+
+  </body>
+</html>

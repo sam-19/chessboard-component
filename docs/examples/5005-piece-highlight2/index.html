@@ -1,0 +1,291 @@
+<!doctype html>
+<html>
+  <head>
+  <meta charset="utf-8">
+  <title>chessboard-element &raquo; Piece Highlighting 2</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="shortcut icon" href="/img/favicon.ico" type="image/x-icon" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:300,400,600|Roboto+Mono">
+  <link rel="stylesheet" href="/css/prism-okaidia.css">
+  <link rel="stylesheet" href="/css/site.css">
+</head>
+
+  <!-- <title>chessboard-element Example #5005 - Piece Highlighting 2</title> -->
+  <body>
+    <header>
+  <div class="body-width-115f6 flex-c31d5">
+    <div class="left-3edd4">
+      <a class="homepage-link-98a24" href="/">chessboard-element<span class="tld-bd9e6"></span></a>
+    </div>
+    <div class="right-05ad3">
+      <a href="/">Home</a>
+      <a  href="/examples/">Examples</a>
+      <a  href="/docs/">Docs</a>
+      <a  href="/download/">Download</a>
+    </div>
+  </div>
+</header>
+
+    <script type="module" src="/js/chessboard-element.bundled.js"></script>
+    <script src="/js/chess-0.10.2.min.js"></script>
+
+    <main>
+      <div class="body-width-115f6 flex-c31d5 examples-c30bc">
+        <nav class="example-nav-0e953" id="examplesNav">
+          
+          <h4>Basic Usage</h4>
+          <ul>
+            
+            <li ><a href="/examples/1000-empty-board/">Empty Board</a></li>
+            
+            <li ><a href="/examples/1001-start-position/">Start Position</a></li>
+            
+            <li ><a href="/examples/1002-fen/">FEN String</a></li>
+            
+            <li ><a href="/examples/1003-position-object/">Position Object</a></li>
+            
+            <li ><a href="/examples/1004-multiple-boards/">Multiple Boards</a></li>
+            
+          </ul>
+          
+          <h4>Config</h4>
+          <ul>
+            
+            <li ><a href="/examples/2000-config-position/">Start Position</a></li>
+            
+            <li ><a href="/examples/2001-config-orientation/">Orientation</a></li>
+            
+            <li ><a href="/examples/2002-config-notation/">Notation</a></li>
+            
+            <li ><a href="/examples/2003-draggable-snapback/">Draggable Snapback</a></li>
+            
+            <li ><a href="/examples/2004-piece-theme-string/">Piece Theme String</a></li>
+            
+            <li ><a href="/examples/2005-animation-speed/">Animation Speed</a></li>
+            
+            <li ><a href="/examples/2006-spare-pieces/">Spare Pieces</a></li>
+            
+            <li ><a href="/examples/2030-piece-theme-function/">Piece Theme Function</a></li>
+            
+            <li ><a href="/examples/2044-position-fen/">Position FEN</a></li>
+            
+            <li ><a href="/examples/2063-position-object/">Position Object</a></li>
+            
+            <li ><a href="/examples/2082-draggable-trash/">Draggable Trash</a></li>
+            
+          </ul>
+          
+          <h4>Methods</h4>
+          <ul>
+            
+            <li ><a href="/examples/3000-get-position/">Get Position</a></li>
+            
+            <li ><a href="/examples/3001-set-position/">Set Position</a></li>
+            
+            <li ><a href="/examples/3002-set-position-instant/">Set Position Instantly</a></li>
+            
+            <li ><a href="/examples/3003-clear/">Clear Board</a></li>
+            
+            <li ><a href="/examples/3004-move-pieces/">Move Pieces</a></li>
+            
+            <li ><a href="/examples/3005-orientation/">Orientation</a></li>
+            
+            <li ><a href="/examples/3007-resize/">Resize</a></li>
+            
+          </ul>
+          
+          <h4>Events</h4>
+          <ul>
+            
+            <li ><a href="/examples/4000-onchange/">change</a></li>
+            
+            <li ><a href="/examples/4001-ondragstart/">drag-start</a></li>
+            
+            <li ><a href="/examples/4002-ondragstart-prevent-drag/">drag-start Prevent Drag</a></li>
+            
+            <li ><a href="/examples/4003-ondragmove/">drag-move</a></li>
+            
+            <li ><a href="/examples/4004-ondrop/">drop</a></li>
+            
+            <li ><a href="/examples/4005-ondrop-snapback/">drop Snapback</a></li>
+            
+            <li ><a href="/examples/4006-ondrop-trash/">drop Trash</a></li>
+            
+            <li ><a href="/examples/4011-onsnapbackend/">snapback-end</a></li>
+            
+            <li ><a href="/examples/4012-onmoveend/">move-end</a></li>
+            
+          </ul>
+          
+          <h4>Integration</h4>
+          <ul>
+            
+            <li ><a href="/examples/5000-legal-moves/">Only Allow Legal Moves</a></li>
+            
+            <li ><a href="/examples/5001-play-random-computer/">Play Random Computer</a></li>
+            
+            <li ><a href="/examples/5002-random-vs-random/">Random vs Random</a></li>
+            
+            <li ><a href="/examples/5003-highlight-legal-moves/">Highlight Legal Moves</a></li>
+            
+            <li ><a href="/examples/5004-piece-highlight1/">Piece Highlighting 1</a></li>
+            
+            <li class="active"><a href="/examples/5005-piece-highlight2/">Piece Highlighting 2</a></li>
+            
+          </ul>
+          
+        </nav>
+        <div class="examples-body-9af4d" id="exampleBodyContainer">
+          <h2>Piece Highlighting 2</h2>          
+          <p><p>Use CSS to show piece highlighting.</p>
+</p>
+          <div class="container-4e1ee">
+            <!-- Begin Example HTML -->
+            <chess-board
+    style="width: 400px"
+    position="start"
+    draggable-pieces>
+</chess-board>
+            <!-- End Example HTML ---->
+          </div>
+          <h4>HTML</h4>
+          <pre class="language-html"><code class="language-html"><span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>chess-board</span><span class="token style-attr language-css"><span class="token attr-name"><br>    <span class="token attr-name">style</span></span><span class="token punctuation">="</span><span class="token attr-value"><span class="token property">width</span><span class="token punctuation">:</span> 400px</span><span class="token punctuation">"</span></span><br>    <span class="token attr-name">position</span><span class="token attr-value"><span class="token punctuation">=</span><span class="token punctuation">"</span>start<span class="token punctuation">"</span></span><br>    <span class="token attr-name">draggable-pieces</span><span class="token punctuation">></span></span><br><span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>chess-board</span><span class="token punctuation">></span></span></code></pre>
+
+          
+          <h4>JavaScript</h4>
+          <pre class="language-js"><code class="language-js"><span class="token comment">// NOTE: this example uses the chess.js library:</span><br><span class="token comment">// https://github.com/jhlywa/chess.js</span><br><br><span class="token keyword">const</span> board <span class="token operator">=</span> document<span class="token punctuation">.</span><span class="token function">querySelector</span><span class="token punctuation">(</span><span class="token string">'chess-board'</span><span class="token punctuation">)</span><span class="token punctuation">;</span><br><span class="token keyword">const</span> highlightStyles <span class="token operator">=</span> document<span class="token punctuation">.</span><span class="token function">createElement</span><span class="token punctuation">(</span><span class="token string">'style'</span><span class="token punctuation">)</span><span class="token punctuation">;</span><br>document<span class="token punctuation">.</span>head<span class="token punctuation">.</span><span class="token function">append</span><span class="token punctuation">(</span>highlightStyles<span class="token punctuation">)</span><span class="token punctuation">;</span><br><br><span class="token keyword">const</span> game <span class="token operator">=</span> <span class="token keyword">new</span> <span class="token class-name">Chess</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span><br><br><span class="token keyword">const</span> styles <span class="token operator">=</span> <span class="token punctuation">[</span><span class="token punctuation">]</span><span class="token punctuation">;</span><br><span class="token keyword">let</span> pendingStyle <span class="token operator">=</span> <span class="token keyword">undefined</span><span class="token punctuation">;</span><br><br><span class="token keyword">const</span> <span class="token function-variable function">updateHighlights</span> <span class="token operator">=</span> <span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=></span> <span class="token punctuation">{</span><br>  highlightStyles<span class="token punctuation">.</span>textContent <span class="token operator">=</span> styles<span class="token punctuation">.</span><span class="token function">join</span><span class="token punctuation">(</span><span class="token string">'\n'</span><span class="token punctuation">)</span><span class="token punctuation">;</span><br><span class="token punctuation">}</span><br><br><span class="token keyword">const</span> <span class="token function-variable function">highlight</span> <span class="token operator">=</span> <span class="token punctuation">(</span><span class="token parameter">square<span class="token punctuation">,</span> color</span><span class="token punctuation">)</span> <span class="token operator">=></span> <span class="token template-string"><span class="token template-punctuation string">`</span><span class="token string"><br>  chess-board::part(</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>square<span class="token interpolation-punctuation punctuation">}</span></span><span class="token string">) {<br>    box-shadow: inset 0 0 3px 3px </span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>color<span class="token interpolation-punctuation punctuation">}</span></span><span class="token string">;<br>  }<br></span><span class="token template-punctuation string">`</span></span><span class="token punctuation">;</span><br><br><span class="token keyword">function</span> <span class="token function">removeHighlights</span> <span class="token punctuation">(</span><span class="token parameter">color</span><span class="token punctuation">)</span> <span class="token punctuation">{</span><br>  highlightStyles<span class="token punctuation">.</span>textContent <span class="token operator">=</span> <span class="token string">''</span><span class="token punctuation">;</span><br><span class="token punctuation">}</span><br><br>board<span class="token punctuation">.</span><span class="token function">addEventListener</span><span class="token punctuation">(</span><span class="token string">'drag-start'</span><span class="token punctuation">,</span> <span class="token punctuation">(</span><span class="token parameter">e</span><span class="token punctuation">)</span> <span class="token operator">=></span> <span class="token punctuation">{</span><br>  <span class="token keyword">const</span> <span class="token punctuation">{</span>source<span class="token punctuation">,</span> piece<span class="token punctuation">,</span> position<span class="token punctuation">,</span> orientation<span class="token punctuation">}</span> <span class="token operator">=</span> e<span class="token punctuation">.</span>detail<span class="token punctuation">;</span><br><br>  <span class="token comment">// do not pick up pieces if the game is over</span><br>  <span class="token keyword">if</span> <span class="token punctuation">(</span>game<span class="token punctuation">.</span><span class="token function">game_over</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span> <span class="token punctuation">{</span><br>    <span class="token keyword">return</span> <span class="token boolean">false</span><span class="token punctuation">;</span><br>  <span class="token punctuation">}</span><br><br>  <span class="token comment">// only pick up pieces for White</span><br>  <span class="token keyword">if</span> <span class="token punctuation">(</span>piece<span class="token punctuation">.</span><span class="token function">search</span><span class="token punctuation">(</span><span class="token regex">/^b/</span><span class="token punctuation">)</span> <span class="token operator">!==</span> <span class="token operator">-</span><span class="token number">1</span><span class="token punctuation">)</span> <span class="token punctuation">{</span><br>    <span class="token keyword">return</span> <span class="token boolean">false</span><span class="token punctuation">;</span><br>  <span class="token punctuation">}</span><br><span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">;</span><br><br><span class="token keyword">function</span> <span class="token function">makeRandomMove</span> <span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span><br>  <span class="token keyword">const</span> possibleMoves <span class="token operator">=</span> game<span class="token punctuation">.</span><span class="token function">moves</span><span class="token punctuation">(</span><span class="token punctuation">{</span><br>    verbose<span class="token operator">:</span> <span class="token boolean">true</span><span class="token punctuation">,</span><br>  <span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">;</span><br><br>  <span class="token comment">// game over</span><br>  <span class="token keyword">if</span> <span class="token punctuation">(</span>possibleMoves<span class="token punctuation">.</span>length <span class="token operator">===</span> <span class="token number">0</span><span class="token punctuation">)</span> <span class="token punctuation">{</span><br>    <span class="token keyword">return</span><span class="token punctuation">;</span><br>  <span class="token punctuation">}</span><br><br>  <span class="token keyword">const</span> randomIdx <span class="token operator">=</span> Math<span class="token punctuation">.</span><span class="token function">floor</span><span class="token punctuation">(</span>Math<span class="token punctuation">.</span><span class="token function">random</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">*</span> possibleMoves<span class="token punctuation">.</span>length<span class="token punctuation">)</span><span class="token punctuation">;</span><br>  <span class="token keyword">const</span> move <span class="token operator">=</span> possibleMoves<span class="token punctuation">[</span>randomIdx<span class="token punctuation">]</span><span class="token punctuation">;</span><br>  game<span class="token punctuation">.</span><span class="token function">move</span><span class="token punctuation">(</span>move<span class="token punctuation">.</span>san<span class="token punctuation">)</span><span class="token punctuation">;</span><br><br><br>  <span class="token comment">// highlight black's move</span><br>  <span class="token keyword">if</span> <span class="token punctuation">(</span>styles<span class="token punctuation">.</span>length <span class="token operator">===</span> <span class="token number">4</span><span class="token punctuation">)</span> <span class="token punctuation">{</span><br>    styles<span class="token punctuation">.</span><span class="token function">shift</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span><br>    styles<span class="token punctuation">.</span><span class="token function">shift</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span><br>  <span class="token punctuation">}</span><br>  styles<span class="token punctuation">.</span><span class="token function">push</span><span class="token punctuation">(</span><span class="token function">highlight</span><span class="token punctuation">(</span>move<span class="token punctuation">.</span>from<span class="token punctuation">,</span> <span class="token string">'blue'</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">;</span><br>  pendingStyle <span class="token operator">=</span> <span class="token function">highlight</span><span class="token punctuation">(</span>move<span class="token punctuation">.</span>to<span class="token punctuation">,</span> <span class="token string">'blue'</span><span class="token punctuation">)</span><span class="token punctuation">;</span><br>  <span class="token function">updateHighlights</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span><br><br>  <span class="token comment">// update the board to the new position</span><br>  board<span class="token punctuation">.</span><span class="token function">setPosition</span><span class="token punctuation">(</span>game<span class="token punctuation">.</span><span class="token function">fen</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span><br><span class="token punctuation">}</span><br><br>board<span class="token punctuation">.</span><span class="token function">addEventListener</span><span class="token punctuation">(</span><span class="token string">'drop'</span><span class="token punctuation">,</span> <span class="token punctuation">(</span><span class="token parameter">e</span><span class="token punctuation">)</span> <span class="token operator">=></span> <span class="token punctuation">{</span><br>  <span class="token keyword">const</span> <span class="token punctuation">{</span>source<span class="token punctuation">,</span> target<span class="token punctuation">,</span> setAction<span class="token punctuation">}</span> <span class="token operator">=</span> e<span class="token punctuation">.</span>detail<span class="token punctuation">;</span><br><br>  <span class="token comment">// see if the move is legal</span><br>  <span class="token keyword">const</span> move <span class="token operator">=</span> game<span class="token punctuation">.</span><span class="token function">move</span><span class="token punctuation">(</span><span class="token punctuation">{</span><br>    <span class="token keyword">from</span><span class="token operator">:</span> source<span class="token punctuation">,</span><br>    to<span class="token operator">:</span> target<span class="token punctuation">,</span><br>    promotion<span class="token operator">:</span> <span class="token string">'q'</span> <span class="token comment">// NOTE: always promote to a queen for example simplicity</span><br>  <span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">;</span><br><br>  <span class="token comment">// illegal move</span><br>  <span class="token keyword">if</span> <span class="token punctuation">(</span>move <span class="token operator">===</span> <span class="token keyword">null</span><span class="token punctuation">)</span> <span class="token punctuation">{</span><br>    <span class="token function">setAction</span><span class="token punctuation">(</span><span class="token string">'snapback'</span><span class="token punctuation">)</span><span class="token punctuation">;</span><br>    <span class="token keyword">return</span><span class="token punctuation">;</span><br>  <span class="token punctuation">}</span><br><br>  <span class="token comment">// highlight white's move</span><br>  <span class="token keyword">if</span> <span class="token punctuation">(</span>styles<span class="token punctuation">.</span>length <span class="token operator">===</span> <span class="token number">4</span><span class="token punctuation">)</span> <span class="token punctuation">{</span><br>    styles<span class="token punctuation">.</span><span class="token function">shift</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span><br>    styles<span class="token punctuation">.</span><span class="token function">shift</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span><br>  <span class="token punctuation">}</span><br>  styles<span class="token punctuation">.</span><span class="token function">push</span><span class="token punctuation">(</span><span class="token function">highlight</span><span class="token punctuation">(</span>move<span class="token punctuation">.</span>from<span class="token punctuation">,</span> <span class="token string">'yellow'</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">;</span><br>  styles<span class="token punctuation">.</span><span class="token function">push</span><span class="token punctuation">(</span><span class="token function">highlight</span><span class="token punctuation">(</span>move<span class="token punctuation">.</span>to<span class="token punctuation">,</span> <span class="token string">'yellow'</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">;</span><br>  pendingStyle <span class="token operator">=</span> <span class="token keyword">undefined</span><span class="token punctuation">;</span><br>  <span class="token function">updateHighlights</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span><br><br>  <span class="token comment">// make random move for black</span><br>  window<span class="token punctuation">.</span><span class="token function">setTimeout</span><span class="token punctuation">(</span>makeRandomMove<span class="token punctuation">,</span> <span class="token number">250</span><span class="token punctuation">)</span><br><span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">;</span><br><br>board<span class="token punctuation">.</span><span class="token function">addEventListener</span><span class="token punctuation">(</span><span class="token string">'move-end'</span><span class="token punctuation">,</span> <span class="token punctuation">(</span><span class="token parameter">e</span><span class="token punctuation">)</span> <span class="token operator">=></span> <span class="token punctuation">{</span><br>  <span class="token keyword">if</span> <span class="token punctuation">(</span>pendingStyle <span class="token operator">!==</span> <span class="token keyword">undefined</span><span class="token punctuation">)</span> <span class="token punctuation">{</span><br>    styles<span class="token punctuation">.</span><span class="token function">push</span><span class="token punctuation">(</span>pendingStyle<span class="token punctuation">)</span><span class="token punctuation">;</span><br>    pendingStyle <span class="token operator">=</span> <span class="token keyword">undefined</span><span class="token punctuation">;</span><br>  <span class="token punctuation">}</span><br>  <span class="token function">updateHighlights</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span><br><span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">;</span><br><br><span class="token comment">// update the board position after the piece snap</span><br><span class="token comment">// for castling, en passant, pawn promotion</span><br>board<span class="token punctuation">.</span><span class="token function">addEventListener</span><span class="token punctuation">(</span><span class="token string">'snap-end'</span><span class="token punctuation">,</span> <span class="token punctuation">(</span><span class="token parameter">e</span><span class="token punctuation">)</span> <span class="token operator">=></span> <span class="token punctuation">{</span><br>  board<span class="token punctuation">.</span><span class="token function">setPosition</span><span class="token punctuation">(</span>game<span class="token punctuation">.</span><span class="token function">fen</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span><br><span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code></pre>
+
+          <script>
+          // Begin Example JS
+          // NOTE: this example uses the chess.js library:
+// https://github.com/jhlywa/chess.js
+
+const board = document.querySelector('chess-board');
+const highlightStyles = document.createElement('style');
+document.head.append(highlightStyles);
+
+const game = new Chess();
+
+const styles = [];
+let pendingStyle = undefined;
+
+const updateHighlights = () => {
+  highlightStyles.textContent = styles.join('\n');
+}
+
+const highlight = (square, color) => `
+  chess-board::part(${square}) {
+    box-shadow: inset 0 0 3px 3px ${color};
+  }
+`;
+
+function removeHighlights (color) {
+  highlightStyles.textContent = '';
+}
+
+board.addEventListener('drag-start', (e) => {
+  const {source, piece, position, orientation} = e.detail;
+
+  // do not pick up pieces if the game is over
+  if (game.game_over()) {
+    return false;
+  }
+
+  // only pick up pieces for White
+  if (piece.search(/^b/) !== -1) {
+    return false;
+  }
+});
+
+function makeRandomMove () {
+  const possibleMoves = game.moves({
+    verbose: true,
+  });
+
+  // game over
+  if (possibleMoves.length === 0) {
+    return;
+  }
+
+  const randomIdx = Math.floor(Math.random() * possibleMoves.length);
+  const move = possibleMoves[randomIdx];
+  game.move(move.san);
+
+
+  // highlight black's move
+  if (styles.length === 4) {
+    styles.shift();
+    styles.shift();
+  }
+  styles.push(highlight(move.from, 'blue'));
+  pendingStyle = highlight(move.to, 'blue');
+  updateHighlights();
+
+  // update the board to the new position
+  board.setPosition(game.fen())
+}
+
+board.addEventListener('drop', (e) => {
+  const {source, target, setAction} = e.detail;
+
+  // see if the move is legal
+  const move = game.move({
+    from: source,
+    to: target,
+    promotion: 'q' // NOTE: always promote to a queen for example simplicity
+  });
+
+  // illegal move
+  if (move === null) {
+    setAction('snapback');
+    return;
+  }
+
+  // highlight white's move
+  if (styles.length === 4) {
+    styles.shift();
+    styles.shift();
+  }
+  styles.push(highlight(move.from, 'yellow'));
+  styles.push(highlight(move.to, 'yellow'));
+  pendingStyle = undefined;
+  updateHighlights();
+
+  // make random move for black
+  window.setTimeout(makeRandomMove, 250)
+});
+
+board.addEventListener('move-end', (e) => {
+  if (pendingStyle !== undefined) {
+    styles.push(pendingStyle);
+    pendingStyle = undefined;
+  }
+  updateHighlights();
+});
+
+// update the board position after the piece snap
+// for castling, en passant, pawn promotion
+board.addEventListener('snap-end', (e) => {
+  board.setPosition(game.fen())
+});
+          // End Example JS
+          </script>
+
+          
+        </div>
+      </div>
+    </main>
+
+    <footer>
+  <div class="body-width-115f6 flex-c31d5">
+    <div class="left-3edd4">
+      <p>chessboard-element is released under the <a href="https://github.com/justinfagnani/chessboard-element/blob/master/LICENSE.md">MIT License</a></p>
+      <p>the code can be found on <a href="https://github.com/justinfagnani/chessboard-element/">GitHub</a></p>
+      <p>chessboard-element is a fork of the awesome <a href="https://github.com/oakmac/chessboardjs/">chessboard.js</a> project by Chris Oakman</p>
+    </div>
+  </div>
+</footer>
+
+
+  </body>
+</html>
