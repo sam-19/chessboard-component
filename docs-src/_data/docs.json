@@ -16,7 +16,7 @@
           "kind": "class",
           "superclass": {
             "name": "LitElement",
-            "package": "lit"
+            "package": "lit-element"
           },
           "description": "A custom element that renders an interactive chess board.",
           "name": "ChessBoardElement",
@@ -25,7 +25,7 @@
               "kind": "field",
               "name": "styles",
               "privacy": "public",
-              "type": "CSSResult | CSSStyleSheet | CSSResultArray",
+              "type": "CSSResult",
               "default": "\"styles\""
             },
             {

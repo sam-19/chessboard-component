@@ -3,7 +3,7 @@
   "type": "commonjs",
   "scripts": {
     "build": "eleventy",
-    "serve": "web-dev-server --root-dir=../docs --node-resolve --watch"
+    "start": "web-dev-server --root-dir=../docs --node-resolve --watch --base-path=/chessboard-element"
   },
   "dependencies": {
     "@11ty/eleventy": "^0.11.1",

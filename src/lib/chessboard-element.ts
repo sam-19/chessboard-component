@@ -1061,8 +1061,9 @@ export class ChessBoardElement extends LitElement {
   }
 
   private _isXYOnSquare(x: number, y: number): Location | 'offboard' {
-    // TODO: test that this works with the polyfill
-    const elements = this.shadowRoot!.elementsFromPoint(x, y);
+    // TODO: remove cast when TypeScript fixes ShadowRoot.elementsFromPoint
+    const elements = (this
+      .shadowRoot as unknown as Document)!.elementsFromPoint(x, y);
     const squareEl = elements.find((e) => e.classList.contains('square'));
     const square =
       squareEl === undefined
