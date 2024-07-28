@@ -12,7 +12,10 @@
   "main": "index.js",
   "module": "index.js",
   "type": "module",
+  "customElements": "custom-elements.json",
   "devDependencies": {
+    "@lit-labs/cli": "^0.6.4",
+    "@lit-labs/gen-manifest": "^0.3.3",
     "@rollup/plugin-node-resolve": "^13.0.5",
     "@typescript-eslint/eslint-plugin": "^4.15.0",
     "@typescript-eslint/parser": "^4.15.0",
@@ -30,7 +33,7 @@
   "scripts": {
     "build": "npm run build:ts && npm run analyze && npm run api",
     "build:ts": "tsc",
-    "analyze": "wca analyze \"src/**/*.ts\" -f json2 --outFile custom-elements.json",
+    "analyze": "lit gen labs gen --manifest",
     "api": "wca src/lib/chessboard-element.ts -f json2 --outFile docs-src/_data/docs.json --inlineTypes",
     "format": "prettier src/lib/* --write",
     "lint": "eslint src/lib/*.ts",
