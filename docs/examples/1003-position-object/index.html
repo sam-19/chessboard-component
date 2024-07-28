@@ -149,7 +149,12 @@
 
           
           <h4>JavaScript</h4>
-          <pre class="language-js"><code class="language-js"><span class="token keyword">const</span> board <span class="token operator">=</span> document<span class="token punctuation">.</span><span class="token function">querySelector</span><span class="token punctuation">(</span><span class="token string">'chess-board'</span><span class="token punctuation">)</span><span class="token punctuation">;</span><br>board<span class="token punctuation">.</span>position <span class="token operator">=</span> <span class="token punctuation">{</span><br>  d6<span class="token operator">:</span> <span class="token string">'bK'</span><span class="token punctuation">,</span><br>  d4<span class="token operator">:</span> <span class="token string">'wP'</span><span class="token punctuation">,</span><br>  e4<span class="token operator">:</span> <span class="token string">'wK'</span><br><span class="token punctuation">}</span><span class="token punctuation">;</span></code></pre>
+          <pre class="language-js"><code class="language-js"><span class="token keyword">const</span> board <span class="token operator">=</span> document<span class="token punctuation">.</span><span class="token function">querySelector</span><span class="token punctuation">(</span><span class="token string">'chess-board'</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+board<span class="token punctuation">.</span>position <span class="token operator">=</span> <span class="token punctuation">{</span>
+  <span class="token literal-property property">d6</span><span class="token operator">:</span> <span class="token string">'bK'</span><span class="token punctuation">,</span>
+  <span class="token literal-property property">d4</span><span class="token operator">:</span> <span class="token string">'wP'</span><span class="token punctuation">,</span>
+  <span class="token literal-property property">e4</span><span class="token operator">:</span> <span class="token string">'wK'</span>
+<span class="token punctuation">}</span><span class="token punctuation">;</span></code></pre>
 
           <script type="module">
             import {objToFen} from '/chessboard-element/bundled/chessboard-element.bundled.js';

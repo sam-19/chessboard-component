@@ -24,19 +24,19 @@
     "rollup-plugin-license": "^2.2.0",
     "rollup-plugin-minify-html-literals": "^1.2.3",
     "rollup-plugin-terser": "^7.0.2",
-    "typescript": "^4.4.3",
-    "web-component-analyzer": "^1.0.2"
+    "typescript": "^5.5.4",
+    "web-component-analyzer": "^2.0.0"
   },
   "scripts": {
     "build": "npm run build:ts && npm run analyze && npm run api",
     "build:ts": "tsc",
-    "analyze": "wca analyze \"src/**/*.ts\" --outFile custom-elements.json",
+    "analyze": "wca analyze \"src/**/*.ts\" -f json2 --outFile custom-elements.json",
     "api": "wca src/lib/chessboard-element.ts -f json2 --outFile docs-src/_data/docs.json --inlineTypes",
     "format": "prettier src/lib/* --write",
     "lint": "eslint src/lib/*.ts",
     "bundle": "rollup -c"
   },
   "dependencies": {
-    "lit": "^2.0.0"
+    "lit": "^3.1.4"
   }
 }
