@@ -1,5 +1,5 @@
-Some portions of the project copyright 2019 Chris Oakman, all others
-are copyright 2019 Justin Fagnani.
+Refactored from works by Chris Oakman and 2019 Justin Fagnani 2019.
+Additions copyright Sampsa Lohi 2024.
 
 Permission is hereby granted, free of charge, to any person obtaining
 a copy of this software and associated documentation files (the
