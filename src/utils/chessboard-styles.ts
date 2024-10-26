@@ -42,6 +42,7 @@ export const styles = css`
         --highlight-color: yellow;
         --highlight-color-available: yellowgreen;
         --highlight-color-unavailable: gray;
+        --light-color: #f0d9b5;
         --preset-color-blue: rgb(0, 110, 255);
         --preset-color-cyan: rgb(0, 175, 225);
         --preset-color-green: rgb(0, 200, 0);
@@ -50,7 +51,6 @@ export const styles = css`
         --preset-color-purple: rgb(200, 0, 100);
         --preset-color-red: rgb(255, 0, 0);
         --preset-color-yellow: rgb(225, 200, 0);
-        --light-color: #f0d9b5;
     }
 
     [part~='wrapper'] {
@@ -120,6 +120,12 @@ export const styles = css`
     [part~='draggable'] {
         cursor: move;
         cursor: grab;
+    }
+    
+    [part~='disabled'] .piece-image {
+        cursor: default;
+        opacity: 0.5;
+        pointer-events: none;
     }
 
     [part~='highlight'] {
