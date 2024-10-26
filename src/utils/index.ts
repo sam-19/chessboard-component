@@ -6,9 +6,11 @@
  * https://github.com/justinfagnani/chessboard-element/blob/master/LICENSE.md
  */
 
-import { pieces, renderPiece } from './wikipedia-pieces-svg'
 import { styles } from './chessboard-styles'
+import { StraightArrow } from './overlays'
+import { pieces, renderPiece } from './wikipedia-pieces-svg'
 export {
+    StraightArrow,
     pieces,
     styles,
     renderPiece,

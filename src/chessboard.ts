@@ -13,6 +13,7 @@ import { styleMap, StyleInfo } from 'lit/directives/style-map.js'
 import { ifDefined } from 'lit/directives/if-defined.js'
 
 import {
+    StraightArrow,
     COLUMNS,
     blackPieces,
     calculatePositionFromMoves,
@@ -46,6 +47,8 @@ import {
     type OffBoardAction,
     type SquareColor,
 } from '#types'
+import { AngledArrow, MarkerType, PathArrow, SquareMarker } from './utils/overlays'
+import { presetColors } from './utils/chessboard-styles'
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -278,6 +281,70 @@ export class ChessBoard extends LitElement {
     adjustByHeight = false
 
     /**
+     * A list on angled arrows to draw on the board.
+     */
+    @property({
+        attribute: 'angled-arrows',
+        converter: (value: string | null) => {
+            if (!value) {
+                return null
+            }
+            const arrows = []
+            const arrowDescriptions = value.split(';')
+            for (const desc of arrowDescriptions) {
+                const params = desc.trim().split(/[,\-:\s]/)
+                if (params.length < 3) {
+                    continue
+                }
+                if (params.length === 3) {
+                    arrows.push(new AngledArrow(params[0] as BoardSquare, params[1] as BoardSquare, params[2]))
+                } else {
+                    const lastIdx = params.length - 1
+                    arrows.push(new PathArrow(params.slice(0, lastIdx) as BoardSquare[], params[lastIdx]))
+                }
+            }
+            return arrows
+        },
+        type: Array,
+    })
+    angledArrows: StraightArrow[] | null = null
+
+    /**
+     * Square codes with associated colors masks to add to them.
+     */
+    @property({
+        attribute: 'color-squares',
+        converter: (value: string | null) => {
+            if (!value) {
+                return null
+            }
+            const squares = []
+            const squareDescriptions = value.split(';')
+            for (const desc of squareDescriptions) {
+                const params = desc.trim().split(/[,\-:\s]/)
+                if (params.length < 2) {
+                    continue
+                }
+                let color = 'var(--preset-color-yellow)'
+                if (
+                    params[params.length - 1].startsWith('@') &&
+                    params[params.length - 1].substring(1) in presetColors
+                ) {
+                    color = `var(--preset-color-${params[params.length - 1].substring(1)})`
+                } else if (!validSquare(params[1])) {
+                    color = params[1]
+                }
+                for (let i=0; i<params.length - 1; i++) {
+                    squares.push({ color: color, square: params[i] })
+                }
+            }
+            return squares
+        },
+        type: Array,
+    })
+    colorSquares: { color: string, square: BoardSquare }[] | null = null
+
+    /**
      * If `true`, pieces on the board are draggable to other squares.
      */
     @property({
@@ -380,6 +447,30 @@ export class ChessBoard extends LitElement {
     snapSpeed: AnimationSpeed = DEFAULT_SNAP_SPEED
 
     /**
+     * A list of straight arrows to draw on the board.
+     */
+    @property({
+        attribute: 'straight-arrows',
+        converter: (value: string | null) => {
+            if (!value) {
+                return null
+            }
+            const arrows = []
+            const arrowDescriptions = value.split(';')
+            for (const desc of arrowDescriptions) {
+                const params = desc.trim().split(/[,\-:\s]/)
+                if (params.length !== 3) {
+                    continue
+                }
+                arrows.push(new StraightArrow(params[0] as BoardSquare, params[1] as BoardSquare, params[2]))
+            }
+            return arrows
+        },
+        type: Array,
+    })
+    straightArrows: StraightArrow[] | null = null
+
+    /**
      * Animation speed for when pieces are removed.
      */
     @property({
@@ -408,10 +499,41 @@ export class ChessBoard extends LitElement {
     })
     sparePieces = false
 
+    @property({
+        attribute: 'square-markers',
+        converter: (value: string | null) => {
+            if (!value) {
+                return null
+            }
+            const markers = []
+            const markerDescriptions = value.split(';')
+            for (const desc of markerDescriptions) {
+                const params = desc.trim().split(/[,\-:\s]/)
+                if (params.length < 3) {
+                    continue
+                }
+                let mType = '' as MarkerType
+                if (params[params.length - 2] === 'o') {
+                    mType = 'circle'
+                } else if (params[params.length - 2] === 'x') {
+                    mType = 'cross'
+                }
+                if (mType) {
+                    for (let i=0; i< params.length - 2; i++) {
+                        markers.push(new SquareMarker(params[i] as BoardSquare, mType, params[params.length - 1]))
+                    }
+                }
+            }
+            return markers
+        },
+        type: Array,
+    })
+    squareMarkers: SquareMarker[] | null = null
+
     @query('[part~="dragged-piece"]')
     private _draggedPieceElement!: HTMLElement
 
-    private _highlightedSquares = new Set()
+    private _highlightSquares = new Set()
 
     private _animations = new Map<BoardLocation, Animation>()
 
@@ -566,8 +688,8 @@ export class ChessBoard extends LitElement {
             const nonEmpty = parts.filter(c => c.length > 0)
             return nonEmpty.join(' ')
         }
-        for (let row = 0; row < 8; row++) {
-            for (let col = 0; col < 8; col++) {
+        for (let row=0; row<8; row++) {
+            for (let col=0; col<8; col++) {
                 const file = COLUMNS[isFlipped ? 7 - col : col]
                 const rank = isFlipped ? row + 1 : 8 - row
                 const square = `${file}${rank}` as BoardSquare
@@ -575,9 +697,12 @@ export class ChessBoard extends LitElement {
                 let piece = this._currentPosition[square]
                 const isDragSource = square === this._dragState?.source
                 const animation = this._animations.get(square)
-                const highlight =
-                    isDragSource || this._highlightedSquares.has(square)
+                const squareHighlight =
+                    isDragSource || this._highlightSquares.has(square)
                         ? 'highlight' : ''
+                const colorSquare = this.colorSquares?.filter(s => s.square === square)[0]
+                const squareStyles = colorSquare
+                        ? { boxShadow: `inset 0 0 ${ this._squareSize }px 0 ${ colorSquare.color }` } : {}
                 const draggable =
                     piece && (this.movablePieces === null || this.movablePieces?.toLowerCase().includes(square))
                         ? 'draggable' : ''
@@ -595,9 +720,10 @@ export class ChessBoard extends LitElement {
                             'square',
                             square,
                             squareColor,
-                            highlight,
+                            squareHighlight,
                             draggable
                         )}"
+                        style="${styleMap(squareStyles)}"
                         @mousedown=${this._mousedownSquare}
                         @mouseenter=${this._mouseenterSquare}
                         @mouseleave=${this._mouseleaveSquare}
@@ -614,11 +740,24 @@ export class ChessBoard extends LitElement {
                 `)
             }
         }
+        // Main board dimensions.
         const styles = {
             width: this._squareSize * 8 + 'px',
             height: this._squareSize * 8 + 'px',
         }
-        return html`<div part="board" style=${styleMap(styles)}>${squares}</div>`
+        // Add overlays.
+        const arrows = []
+        for (const arr of this.angledArrows || []) {
+            arrows.push(arr.getSvg())
+        }
+        for (const arr of this.straightArrows || []) {
+            arrows.push(arr.getSvg())
+        }
+        const markers = []
+        for (const mrk of this.squareMarkers || []) {
+            markers.push(mrk.getSvg())
+        }
+        return html`<div part="board" style=${styleMap(styles)}>${squares}${arrows}${markers}</div>`
     }
 
     _renderPiece (
@@ -1060,11 +1199,11 @@ export class ChessBoard extends LitElement {
 
     private _highlightSquare (square: BoardLocation, value = true) {
         if (value) {
-            this._highlightedSquares.add(square)
+            this._highlightSquares.add(square)
         } else {
-            this._highlightedSquares.delete(square)
+            this._highlightSquares.delete(square)
         }
-        this.requestUpdate('_highlightedSquares')
+        this.requestUpdate('_highlightSquares')
     }
 
     private async _snapbackDraggedPiece () {
@@ -1336,7 +1475,7 @@ export class ChessBoard extends LitElement {
         )
         this.dispatchEvent(dropEvent)
 
-        this._highlightedSquares.clear()
+        this._highlightSquares.clear()
 
         // do it!
         if (action === 'snapback') {
