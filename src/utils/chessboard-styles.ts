@@ -39,8 +39,9 @@ export const styles = css`
         display: block;
         position: relative;
         --dark-color: #b58863;
-        --highlight-color: yellow;
+        --highlight-color-active: yellow;
         --highlight-color-available: yellowgreen;
+        --highlight-color-previous: steelblue;
         --highlight-color-unavailable: gray;
         --light-color: #f0d9b5;
         --preset-color-blue: rgb(0, 110, 255);
@@ -128,13 +129,16 @@ export const styles = css`
         pointer-events: none;
     }
 
-    [part~='highlight'] {
-        box-shadow: inset 0 0 1px 5px var(--highlight-color);
+    [part~='highlight-active'] {
+        box-shadow: inset 0 0 1px 5px var(--highlight-color-active);
     }
-    [part~='highlight available'] {
+    [part~='highlight-available'] {
         box-shadow: inset 0 0 1px 5px var(--highlight-color-available);
     }
-    [part~='highlight unavailable'] {
+    [part~='highlight-previous'] {
+        box-shadow: inset 0 0 1px 5px var(--highlight-color-previous);
+    }
+    [part~='highlight-unavailable'] {
         box-shadow: inset 0 0 1px 5px var(--highlight-color-unavailable);
     }
 

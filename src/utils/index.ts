@@ -28,19 +28,40 @@ const RUN_ASSERTS = true
  * GENERAL UTILITIES.
  */
 
+/**
+ * Type-safe check to see if a value is a string or not.
+ * @param s - Possible string.
+ * @returns True if `s` is a string, false otherwise.
+ */
 export const isString = (s: unknown): s is string => {
     return typeof s === 'string'
 }
-
+/**
+ * Type-safe check to see if a value is a function or not.
+ * @param f - Possible function.
+ * @returns True if `f` is a function, false otherwise.
+ */
 export const isFunction = (f: unknown): f is Function => {
     return typeof f === 'function'
 }
-
+/**
+ * Type-safe check to see if a value is a number or not.
+ * @param s - Possible number.
+ * @returns True if `n` is a number, false otherwise.
+ */
 export const isInteger = (n: unknown): n is number => {
     return typeof n === 'number' && isFinite(n) && Math.floor(n) === n
 }
-
+/**
+ * Make a new copy of an object and all its child properties.
+ * @param thing - Object to copy.
+ * @returns A new copy of the object.
+ */
 export const deepCopy = <T>(thing: T): T => {
+    if (typeof thing !== 'object' || thing === null) {
+        // Primitives don't need copying and functions cannot be copied.
+        return thing
+    }
     return JSON.parse(JSON.stringify(thing))
 }
 
@@ -73,50 +94,68 @@ export const COLUMNS = 'abcdefgh'.split('')
 export const whitePieces = ['wK', 'wQ', 'wR', 'wB', 'wN', 'wP'] as ChessPiece[]
 export const blackPieces = ['bK', 'bQ', 'bR', 'bB', 'bN', 'bP'] as ChessPiece[]
 
+/**
+ * Get the color of the given square.
+ * @param square - Square code.
+ * @returns 'black' or 'white'.
+ */
 export const getSquareColor = (square: BoardSquare) =>
     square.charCodeAt(0) % 2 ^ square.charCodeAt(1) % 2 ? 'white' : 'black'
 
-export const validSquare = (square: unknown): square is string => {
+/**
+ * Check if the given string is a valid board square.
+ * @param square - Square code to check.
+ * @returns True if valid square, false otherwise.
+ */
+export const isValidSquare = (square: unknown): square is BoardSquare => {
     return isString(square) && square.search(/^[a-h][1-8]$/) !== -1
 }
 
-export const validMove = (move: unknown): move is string => {
-    // move should be a string
-    if (!isString(move)) return false
-
-    // move should be in the form of "e2-e4", "f6-d5"
+/**
+ * Check if the given move is valid or not.
+ * @param move - Move to check.
+ * @returns True if valid, false otherwise.
+ */
+export const isValidMove = (move: unknown): move is string => {
+    // Move should be a string.
+    if (!isString(move)) {
+        return false
+    }
+    // Move should be in the form of "e2-e4", "f6-d5".
     const squares = move.split('-')
-    if (squares.length !== 2) return false
+    if (squares.length !== 2) {
+        return false
+    }
 
-    return validSquare(squares[0]) && validSquare(squares[1])
+    return isValidSquare(squares[0]) && isValidSquare(squares[1])
 }
 
 if (RUN_ASSERTS) {
-    console.assert(validSquare('a1'))
-    console.assert(validSquare('e2'))
-    console.assert(!validSquare('D2'))
-    console.assert(!validSquare('g9'))
-    console.assert(!validSquare('a'))
-    console.assert(!validSquare(true))
-    console.assert(!validSquare(null))
-    console.assert(!validSquare({}))
+    console.assert(isValidSquare('a1'))
+    console.assert(isValidSquare('e2'))
+    console.assert(!isValidSquare('D2'))
+    console.assert(!isValidSquare('g9'))
+    console.assert(!isValidSquare('a'))
+    console.assert(!isValidSquare(true))
+    console.assert(!isValidSquare(null))
+    console.assert(!isValidSquare({}))
 }
 
-export const validPieceCode = (code: unknown): code is string => {
+export const isValidPieceCode = (code: unknown): code is string => {
     return isString(code) && code.search(/^[bw][KQRNBP]$/) !== -1
 }
 
 if (RUN_ASSERTS) {
-    console.assert(validPieceCode('bP'))
-    console.assert(validPieceCode('bK'))
-    console.assert(validPieceCode('wK'))
-    console.assert(validPieceCode('wR'))
-    console.assert(!validPieceCode('WR'))
-    console.assert(!validPieceCode('Wr'))
-    console.assert(!validPieceCode('a'))
-    console.assert(!validPieceCode(true))
-    console.assert(!validPieceCode(null))
-    console.assert(!validPieceCode({}))
+    console.assert(isValidPieceCode('bP'))
+    console.assert(isValidPieceCode('bK'))
+    console.assert(isValidPieceCode('wK'))
+    console.assert(isValidPieceCode('wR'))
+    console.assert(!isValidPieceCode('WR'))
+    console.assert(!isValidPieceCode('Wr'))
+    console.assert(!isValidPieceCode('a'))
+    console.assert(!isValidPieceCode(true))
+    console.assert(!isValidPieceCode(null))
+    console.assert(!isValidPieceCode({}))
 }
 
 const squeezeFenEmptySquares = (fen: string) => {
@@ -141,172 +180,177 @@ const expandFenEmptySquares = (fen: string) => {
         .replace(/2/g, '11')
 }
 
-export const validFen = (fen: unknown): fen is string => {
-    if (!isString(fen)) return false
-
-    // cut off any move, castling, etc info from the end
-    // we're only interested in position information
+/**
+ * Check if the given string is a valid FEN position.
+ * @param fen - Supposed FEN string.
+ * @returns True if valid, false otherwise.
+ */
+export const isValidFen = (fen: unknown): fen is string => {
+    if (!isString(fen)) {
+        return false
+    }
+    // Cut off any move, castling, etc info from the end.
+    // We're only interested in position information.
     fen = fen.replace(/ .+$/, '')
-
-    // expand the empty square numbers to just 1s
+    // Expand the empty square numbers to just 1s.
     fen = expandFenEmptySquares(fen as string)
-
-    // FEN should be 8 sections separated by slashes
+    // FEN should be 8 sections separated by slashes.
     const chunks = (fen as string).split('/')
-    if (chunks.length !== 8) return false
-
-    // check each section
+    if (chunks.length !== 8) {
+        return false
+    }
+    // Check each section.
     for (let i = 0; i < 8; i++) {
         if (chunks[i].length !== 8 || chunks[i].search(/[^kqrnbpKQRNBP1]/) !== -1) {
             return false
         }
     }
-
     return true
 }
 
 if (RUN_ASSERTS) {
-    console.assert(validFen(START_FEN))
-    console.assert(validFen('8/8/8/8/8/8/8/8'))
+    console.assert(isValidFen(START_FEN))
+    console.assert(isValidFen('8/8/8/8/8/8/8/8'))
     console.assert(
-        validFen('r1bqkbnr/pppp1ppp/2n5/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R')
+        isValidFen('r1bqkbnr/pppp1ppp/2n5/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R')
     )
     console.assert(
-        validFen('3r3r/1p4pp/2nb1k2/pP3p2/8/PB2PN2/p4PPP/R4RK1 b - - 0 1')
+        isValidFen('3r3r/1p4pp/2nb1k2/pP3p2/8/PB2PN2/p4PPP/R4RK1 b - - 0 1')
     )
     console.assert(
-        !validFen('3r3z/1p4pp/2nb1k2/pP3p2/8/PB2PN2/p4PPP/R4RK1 b - - 0 1')
+        !isValidFen('3r3z/1p4pp/2nb1k2/pP3p2/8/PB2PN2/p4PPP/R4RK1 b - - 0 1')
     )
-    console.assert(!validFen('anbqkbnr/8/8/8/8/8/PPPPPPPP/8'))
-    console.assert(!validFen('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/'))
-    console.assert(!validFen('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBN'))
-    console.assert(!validFen('888888/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR'))
-    console.assert(!validFen('888888/pppppppp/74/8/8/8/PPPPPPPP/RNBQKBNR'))
-    console.assert(!validFen({}))
+    console.assert(!isValidFen('anbqkbnr/8/8/8/8/8/PPPPPPPP/8'))
+    console.assert(!isValidFen('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/'))
+    console.assert(!isValidFen('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBN'))
+    console.assert(!isValidFen('888888/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR'))
+    console.assert(!isValidFen('888888/pppppppp/74/8/8/8/PPPPPPPP/RNBQKBNR'))
+    console.assert(!isValidFen({}))
 }
 
-export const validPositionObject = (pos: unknown): pos is BoardPositionObject => {
+/**
+ * Check if the given parameter is a valid board position object.
+ * @param pos - Supposed valid board position.
+ * @returns True if valid, false otherwise.
+ */
+export const isValidPositionObject = (pos: unknown): pos is BoardPositionObject => {
     if (typeof pos !== 'object' || pos === null) {
         return false
     }
-
     for (const [square, piece] of Object.entries(pos)) {
-        if (!validSquare(square) || !validPieceCode(piece)) {
+        if (!isValidSquare(square) || !isValidPieceCode(piece)) {
             return false
         }
     }
-
     return true
 }
 
 if (RUN_ASSERTS) {
-    // console.assert(validPositionObject(START_POSITION))
-    console.assert(validPositionObject({}))
-    console.assert(validPositionObject({e2: 'wP'}))
-    console.assert(validPositionObject({e2: 'wP', d2: 'wP'}))
-    console.assert(!validPositionObject({e2: 'BP'}))
-    console.assert(!validPositionObject({y2: 'wP'}))
-    console.assert(!validPositionObject(null))
-    console.assert(!validPositionObject(undefined))
-    console.assert(!validPositionObject(1))
-    console.assert(!validPositionObject('start'))
-    console.assert(!validPositionObject(START_FEN))
+    // console.assert(isValidPositionObject(START_POSITION))
+    console.assert(isValidPositionObject({}))
+    console.assert(isValidPositionObject({e2: 'wP'}))
+    console.assert(isValidPositionObject({e2: 'wP', d2: 'wP'}))
+    console.assert(!isValidPositionObject({e2: 'BP'}))
+    console.assert(!isValidPositionObject({y2: 'wP'}))
+    console.assert(!isValidPositionObject(null))
+    console.assert(!isValidPositionObject(undefined))
+    console.assert(!isValidPositionObject(1))
+    console.assert(!isValidPositionObject('start'))
+    console.assert(!isValidPositionObject(START_FEN))
 }
 
-// convert FEN piece code to bP, wK, etc
+/**
+ * Convert a single-character FEN piece code into a case-insensitive two-character piece code.
+ * @param piece - A FEN piece code.
+ * @returns Two-character piece code.
+ */
 const fenToPieceCode = (piece: string) => {
-    // black piece
+    // Black piece.
     if (piece.toLowerCase() === piece) {
         return 'b' + piece.toUpperCase() as ChessPiece
     }
-
-    // white piece
+    // White piece.
     return 'w' + piece.toUpperCase() as ChessPiece
 }
 
-// convert bP, wK, etc code to FEN structure
+/**
+ * Convert a two-character piece code into a single-character FEN piece code.
+ * @param piece - Two-character piece code.
+ * @returns FEN piece code.
+ */
 const pieceCodeToFen = (piece: ChessPiece) => {
     const pieceCodeLetters = piece.split('')
-
-    // white piece
+    // White piece.
     if (pieceCodeLetters[0] === 'w') {
         return pieceCodeLetters[1].toUpperCase()
     }
-
-    // black piece
+    // Black piece.
     return pieceCodeLetters[1].toLowerCase()
 }
 
-// convert FEN string to position object
-// returns false if the FEN string is invalid
+/**
+ * Convert a FEN position string into a position object.
+ * @param fen - FEN position string.
+ * @returns Position object or `false` if the FEN string is not valid.
+ */
 export const fenToObj = (fen: string) => {
-    if (!validFen(fen)) return false
-
-    // cut off any move, castling, etc info from the end
-    // we're only interested in position information
+    if (!isValidFen(fen)) return false
+    // Cut off any move, castling, etc info from the end.
+    // We're only interested in position information.
     fen = fen.replace(/ .+$/, '')
-
     const rows = fen.split('/')
     const position: BoardPositionObject = {}
-
     let currentRow = 8
     for (let i = 0; i < 8; i++) {
         const row = rows[i].split('')
         let colIdx = 0
-
-        // loop through each character in the FEN section
+        // Loop through each character in the FEN section.
         for (let j = 0; j < row.length; j++) {
-            // number / empty squares
+            // Number / empty squares.
             if (row[j].search(/[1-8]/) !== -1) {
                 const numEmptySquares = parseInt(row[j], 10)
                 colIdx = colIdx + numEmptySquares
             } else {
-                // piece
+                // Piece.
                 const square = COLUMNS[colIdx] + currentRow
                 position[square] = fenToPieceCode(row[j])
                 colIdx = colIdx + 1
             }
         }
-
         currentRow = currentRow - 1
     }
-
     return position
 }
 
 export const START_POSITION = fenToObj(START_FEN) as BoardPositionObject
 
-// position object to FEN string
-// returns false if the obj is not a valid position object
+/**
+ * Convert a position object into a FEN position string.
+ * @param obj - Position object.
+ * @returns FEN position string or `false` if the position obejct is not valid.
+ */
 export const objToFen = (obj: BoardPositionObject) => {
-    if (!validPositionObject(obj)) return false
-
+    if (!isValidPositionObject(obj)) return false
     let fen = ''
-
     let currentRow = 8
     for (let i = 0; i < 8; i++) {
         for (let j = 0; j < 8; j++) {
             const square = COLUMNS[j] + currentRow
-
-            // piece exists
+            // Piece exists.
             if (obj.hasOwnProperty(square)) {
                 fen = fen + pieceCodeToFen(obj[square]!)
             } else {
-                // empty space
+                // Empty space.
                 fen = fen + '1'
             }
         }
-
         if (i !== 7) {
             fen = fen + '/'
         }
-
         currentRow = currentRow - 1
     }
-
-    // squeeze the empty numbers together
+    // Squeeze the empty numbers together.
     fen = squeezeFenEmptySquares(fen)
-
     return fen
 }
 
@@ -316,27 +360,43 @@ if (RUN_ASSERTS) {
     console.assert(objToFen({a2: 'wP', b2: 'bP'}) === '8/8/8/8/8/8/Pp6/8')
 }
 
-export const normalizePozition = (
+/**
+ * Convert a standard `position` description string into a board position object.
+ * @param position - A position object or description; null or empty string means empty board.
+ * @returns Board position object.
+ */
+export const normalizePosition = (
     position: BoardPosition | null
 ): BoardPositionObject => {
-    if (position == null) {
+    if (!position) {
         return {}
     }
-
     // start position
-    if (isString(position) && position.toLowerCase() === 'start') {
-        position = deepCopy(START_POSITION)
+    if (isString(position)) {
+        if (position.toLowerCase() === 'start') {
+            return deepCopy(START_POSITION)
+        }
+        // convert FEN to position object
+        if (isValidFen(position)) {
+            return fenToObj(position) as BoardPositionObject
+        }
+        return {}
     }
-
-    // convert FEN to position object
-    if (validFen(position)) {
-        position = fenToObj(position) as BoardPositionObject
+    if (!isValidPositionObject(position)) {
+        return {}
     }
+    // Just return the position.
+    // TODO: Perform some checks and fix possible errors in the position?
     return position as BoardPositionObject
 }
 
-// returns the distance between two squares
-const squareDistance = (squareA: string, squareB: string) => {
+/**
+ * Get the larger distance between two board squares.
+ * @param squareA - Square code for the first square.
+ * @param squareB - Square code for the other square.
+ * @returns Distance as number of squares.
+ */
+const squareDistance = (squareA: BoardSquare, squareB: BoardSquare) => {
     const squareAArray = squareA.split('')
     const squareAx = COLUMNS.indexOf(squareAArray[0]) + 1
     const squareAy = parseInt(squareAArray[1], 10)
@@ -348,85 +408,89 @@ const squareDistance = (squareA: string, squareB: string) => {
     const xDelta = Math.abs(squareAx - squareBx)
     const yDelta = Math.abs(squareAy - squareBy)
 
-    if (xDelta >= yDelta) return xDelta
-    return yDelta
+    return xDelta >= yDelta ? xDelta : yDelta
 }
 
-// returns an array of closest squares from square
+/**
+ * Get a list of squares arranged by their distance to the given `square`.
+ * @param square - Board square to check.
+ * @returns Board square codes as an array.
+ */
 const createRadius = (square: BoardSquare) => {
     const squares = []
-
-    // calculate distance of all squares
+    // Calculate distance to all squares.
     for (let i = 0; i < 8; i++) {
         for (let j = 0; j < 8; j++) {
-            const s = COLUMNS[i] + (j + 1)
-
-            // skip the square we're starting from
-            if (square === s) continue
-
+            const s = COLUMNS[i] + (j + 1) as BoardSquare
+            // Skip the square we're starting from.
+            if (square === s) {
+                continue
+            }
             squares.push({
                 square: s,
                 distance: squareDistance(square, s),
             })
         }
     }
-
-    // sort by distance
+    // Sort by distance.
     squares.sort(function (a, b) {
         return a.distance - b.distance
     })
-
-    // just return the square code
-    const surroundingSquares = []
+    // Just return the square code.
+    const surroundingSquares = [] as BoardSquare[]
     for (let i = 0; i < squares.length; i++) {
         surroundingSquares.push(squares[i].square)
     }
-
     return surroundingSquares
 }
 
-// returns the square of the closest instance of piece
-// returns false if no instance of piece is found in position
+/**
+ * Find the closest instance of given `piece` from the given `square`.
+ * @param position - Board position.
+ * @param piece - Piece to find.
+ * @param square - Square to check.
+ * @returns Board square of 'false', if the given piece is not found in the position.
+ */
 export const findClosestPiece = (
     position: BoardPositionObject,
     piece: ChessPiece,
     square: BoardSquare
 ) => {
-    // create array of closest squares from square
+    // Create array of closest squares from square.
     const closestSquares = createRadius(square)
-
-    // search through the position in order of distance for the piece
+    // Search through the position in order of distance for the piece.
     for (let i = 0; i < closestSquares.length; i++) {
         const s = closestSquares[i]
-
         if (position.hasOwnProperty(s) && position[s] === piece) {
             return s as BoardSquare
         }
     }
-
     return false
 }
 
-// given a position and a set of moves, return a new position
-// with the moves executed
+/**
+ * Get the new board position after the given set of (valid) `moves`.
+ * @param position - Board position to start from.
+ * @param moves - List of moves as a object `{ [<from>: square code]: <to>: board square }`.
+ * @returns The new board position object.
+ */
 export const calculatePositionFromMoves = (
     position: BoardPositionObject,
     moves: { [from: string]: string }
 ) => {
     const newPosition = deepCopy(position)
-
     for (const i in moves) {
-        if (!moves.hasOwnProperty(i)) continue
-
-        // skip the move if the position doesn't have a piece on the source square
-        if (!newPosition.hasOwnProperty(i)) continue
-
+        if (!moves.hasOwnProperty(i)) {
+            continue
+        }
+        // Skip the move if the position doesn't have a piece on the source square.
+        if (!newPosition.hasOwnProperty(i)) {
+            continue
+        }
         const piece = newPosition[i]
         delete newPosition[i]
         newPosition[moves[i]] = piece
     }
-
     return newPosition
 }
-
 // TODO: add some asserts here for calculatePositionFromMoves
