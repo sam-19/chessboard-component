@@ -15,6 +15,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "manifest": "node ./node_modules/@custom-elements-manifest/analyzer/cem.js analyze",
     "prepack": "npm run build",
     "preview": "vite preview",
     "release": "npm publish --access=public"
@@ -23,6 +24,7 @@
     "lit": "^3.2.0"
   },
   "devDependencies": {
+    "@custom-elements-manifest/analyzer": "^0.10.3",
     "@types/node": "^22.7.7",
     "typescript": "^5.5.3",
     "vite": "^5.4.8"
