@@ -66,19 +66,24 @@ const DEFAULT_TRASH_SPEED = 100
 // Predicates
 // ---------------------------------------------------------------------------
 
-function assertIsDragging(
+/**
+ * Is the the current state "dragging".
+ * @param dragState - Drag state object.
+ */
+function isDragging(
     dragState: DragState | undefined
 ): asserts dragState is DraggingDragState {
     if (dragState?.state !== 'dragging') {
         throw new Error(`unexpected drag state ${JSON.stringify(dragState)}`)
     }
 }
-
+/**
+ * Directive for chess pieces.
+ */
 class RenderPieceDirective extends Directive {
     render (_piece: ChessPiece, _renderPiece?: RenderPieceFunction) {
         return nothing
     }
-
     update (part: AttributePart, [piece, renderPiece]: DirectiveParameters<this>) {
         if (isFunction(renderPiece)) {
             renderPiece(piece, part.element)
@@ -88,8 +93,15 @@ class RenderPieceDirective extends Directive {
         return noChange
     }
 }
+/**
+ * Create a rendering directive for the chess piece.
+ */
 const renderPieceDirective = directive(RenderPieceDirective)
-
+/**
+ * Convert the descriptive speed value into move time in milliseconds.
+ * @param speed - Speed value.
+ * @returns Move time in ms.
+ */
 const speedToMS = (speed: AnimationSpeed) => {
     if (typeof speed === 'number') {
         return speed
@@ -102,12 +114,31 @@ const speedToMS = (speed: AnimationSpeed) => {
     }
     return parseInt(speed, 10)
 }
-
+/**
+ * Get ID string for the give `square`.
+ * @param square - Square name.
+ * @returns Square ID string.
+ */
 const squareId = (square: BoardLocation) => `square-${square}`
+/**
+ * Get ID string for the give space `piece`.
+ * @param square - Space piece name.
+ * @returns Spare piece ID string.
+ */
 const sparePieceId = (piece: ChessPiece) => `spare-piece-${piece}`
-
+/**
+ * A function to render a chess piece on the board.
+ * @param piece - Name of the chess piece to render.
+ * @param container - The HTML element that contains the chess piece.
+ */
 export type RenderPieceFunction = (
+    /**
+     * Name of the chess piece to render.
+     */
     piece: ChessPiece,
+    /**
+     * The HTML element that contains the chess piece.
+     */
     container: HTMLElement
 ) => void
 
@@ -235,13 +266,11 @@ export class ChessBoard extends LitElement {
     }
 
     /**
-     * The current position of the board, as a `PositionObject`. This property may
-     * be set externally, but only to valid `PositionObject`s. The value is copied
-     * before being applied to the board. Changes to the position object are not
+     * The current position of the board, as a `PositionObject`. This property may be set externally, but only to valid
+     * `PositionObject`s. The value is copied before being applied to the board. Changes to the position object are not
      * reflected in th rendering.
      *
-     * To set the position using FEN, or a keyword like `'start'`, or to use
-     * animations, use the `setPosition` method.
+     * To set the position using FEN, or a keyword like `'start'`, or to use animations, use the `setPosition` method.
      */
     @property({
         converter: (value: string | null) => normalizePosition(value),
@@ -266,9 +295,8 @@ export class ChessBoard extends LitElement {
     hideNotation = false
 
     /**
-     * Whether to show the board notation. This is always the inverse of
-     * `hideNotation`, which reflects the `hide-notation` attribute.
-     * @default true
+     * Whether to show the board notation. This is always the inverse of `hideNotation`, which reflects the
+     * `hide-notation` attribute.
      */
     get showNotation() {
         return !this.hideNotation
@@ -382,9 +410,8 @@ export class ChessBoard extends LitElement {
     draggablePieces = false
 
     /**
-     * If `'snapback'`, pieces dropped off the board will return to their original
-     * square. If `'trash'`, pieces dropped off the board will be removed from the
-     * board.
+     * If `'snapback'`, pieces dropped off the board will return to their original square. If `'trash'`, pieces dropped
+     * off the board will be removed from the board.
      *
      * This property has no effect when `draggable` is `false`.
      * @default 'snapback'
@@ -393,8 +420,8 @@ export class ChessBoard extends LitElement {
     dropOffBoard: OffBoardAction = 'snapback'
 
     /**
-     * Animation speed for when pieces move between squares or from spare pieces
-     * to the board.
+     * Animation speed for when pieces move between squares or from spare pieces to the board.
+     * @default 'fast'
      */
     @property({
         attribute: 'move-speed',
@@ -402,34 +429,31 @@ export class ChessBoard extends LitElement {
     moveSpeed: AnimationSpeed = DEFAULT_MOVE_SPEED
 
     /**
-     * The orientation of the board. `'white'` for the white player at the bottom,
-     * `'black'` for the black player at the bottom.
+     * The orientation of the board. `'white'` for the white player at the bottom, `'black'` for the black player at
+     * the bottom.
      * @default 'white'
      */
     @property()
     orientation: SquareColor = 'white'
 
     /**
-     * A template string or function used to determine the source of piece images,
-     * used by the default `renderPiece` function, which renders an `<img>`
-     * element.
+     * A template string or function used to determine the source of piece images, used by the default `renderPiece`
+     * function, which renders an `<img>` element.
      *
-     * If `pieceTheme` is a string, the pattern {piece} will be replaced by the
-     * piece code. The result should be an an `<img>` source.
+     * If `pieceTheme` is a string, the pattern {piece} will be replaced by the piece code. The result should be an
+     * `<img>` source.
      *
-     * If `pieceTheme` is a function the first argument is the piece code. The
-     * function should return an `<img>` source.
+     * If `pieceTheme` is a function the first argument is the piece code. The function should return an `<img>` source.
      */
     @property({ attribute: 'piece-theme' })
     pieceTheme?: string | ((piece: ChessPiece) => string)
 
     /**
-     * A function that renders DOM for a piece to a container element. This
-     * function can render any elements and text, including SVG.
+     * A function that renders DOM for a piece to a container element. This function can render any elements and text,
+     * including SVG.
      *
-     * The default value renders an SVG image of the piece, unless the
-     * `pieceTheme` property is set, then it uses `pieceTheme` to get the URL for
-     * an `<img>` element.
+     * The default value renders an SVG image of the piece, unless the `pieceTheme` property is set, then it uses
+     * `pieceTheme` to get the URL for an `<img>` element.
      *
      * @default Function
      */
@@ -452,8 +476,7 @@ export class ChessBoard extends LitElement {
     }
 
     /**
-     * Animation speed for when pieces that were dropped outside the board return
-     * to their original square.
+     * Animation speed for when pieces that were dropped outside the board return to their original square.
      */
     @property({
         attribute: 'snapback-speed',
@@ -522,9 +545,8 @@ export class ChessBoard extends LitElement {
     appearSpeed: AnimationSpeed = DEFAULT_APPEAR_SPEED
 
     /**
-     * If `true`, the board will have spare pieces that can be dropped onto the
-     * board. If `sparePieces` is set to `true`, `draggablePieces` gets set to
-     * `true` as well.
+     * If `true`, the board will have spare pieces that can be dropped onto the board. If `sparePieces` is set to
+     * `true`, `draggablePieces` gets set to `true` as well.
      * @default false
      */
     @property({
@@ -568,7 +590,7 @@ export class ChessBoard extends LitElement {
     squareMarkers: SquareMarker[] = []
 
     // ---------------------------------------------------------------------------
-    // Internal properties and methods.
+    // Internal properties and getters.
     // ---------------------------------------------------------------------------
 
     @query('[part~="dragged-piece"]')
@@ -581,6 +603,13 @@ export class ChessBoard extends LitElement {
     #currentPosition: BoardPositionObject = {}
 
     #dragState?: DragState
+
+    /**
+     * Is the current drag state "dragging".
+     */
+    get #isDragging (): boolean {
+        return this.#dragState?.state === 'dragging'
+    }
 
     /**
      * Get the edge length of a single square in pixels.
@@ -660,15 +689,17 @@ export class ChessBoard extends LitElement {
             </div>
         `
     }
-
+    /**
+     * Render spare pieces of the given `color`. Pieces are rendered on an additional row instead of the player details.
+     * @param color - Color of the side with the spare pieces.
+     */
     #renderSparePieces (color: SquareColor) {
         if (!this.sparePieces) {
             return nothing
         }
         const pieces = color === 'black' ? blackPieces : whitePieces
-        // The empty <div>s below are placeholders to get the shelf to line up with
-        // the board's grid. Another option would be to try to use the same grid,
-        // either with a single container, or subgrid/display:contents when those
+        // The empty <div>s below are placeholders to get the shelf to line up with the board's grid. Another option
+        // would be to try to use the same grid, either with a single container, or subgrid/display:contents when those
         // are available.
         return html`
             <div></div>
@@ -694,8 +725,8 @@ export class ChessBoard extends LitElement {
                                 'spare-piece',
                                 disabled ? 'disabled' : '',
                             )}"
-                            @mousedown=${disabled ? null : this.#mousedownSparePiece}
-                            @touchstart=${disabled ? null : this.#mousedownSparePiece}
+                            @mousedown=${disabled ? null : this.#pointerdownSparePiece}
+                            @touchstart=${disabled ? null : this.#pointerdownSparePiece}
                         >
                             ${this.#renderPiece(p, {}, false, sparePieceId(p))}
                         </div>
@@ -705,7 +736,9 @@ export class ChessBoard extends LitElement {
             <div></div>
         `
     }
-
+    /**
+     * Render the piece that is being dragged.
+     */
     #renderDraggedPiece () {
         const styles: Partial<CSSStyleDeclaration> = {
             height: `${this.#squareSize}px`,
@@ -761,7 +794,9 @@ export class ChessBoard extends LitElement {
             'dragged-piece'
         )
     }
-
+    /**
+     * Render the chess board and pieces on the board.
+     */
     #renderBoard () {
         const squares = []
         const isFlipped = this.orientation === 'black'
@@ -808,10 +843,10 @@ export class ChessBoard extends LitElement {
                             draggable
                         )}"
                         style="${styleMap(squareStyles)}"
-                        @mousedown=${this.#mousedownSquare}
-                        @mouseenter=${this.#mouseenterSquare}
-                        @mouseleave=${this.#mouseleaveSquare}
-                        @touchstart=${this.#mousedownSquare}
+                        @mousedown=${this.#pointerdownSquare}
+                        @mouseenter=${this.#pointerenterSquare}
+                        @mouseleave=${this.#pointerleaveSquare}
+                        @touchstart=${this.#pointerdownSquare}
                     >
                         ${this.showNotation && row === 7
                             ? html`<div part="notation alpha">${file}</div>`
@@ -843,7 +878,14 @@ export class ChessBoard extends LitElement {
         }
         return html`<div part="board" style=${styleMap(styles)}>${squares}${arrows}${markers}</div>`
     }
-
+    /**
+     * Render the the given piece on the board.
+     * @param piece - The piece to render.
+     * @param styles - Additional piece styles.
+     * @param isDragSource - Is this piece currently being dragged.
+     * @param id - Optional piece ID.
+     * @param part - Additional CSS parts.
+     */
     #renderPiece (
         piece: ChessPiece | undefined,
         styles: Partial<CSSStyleDeclaration>,
@@ -851,23 +893,19 @@ export class ChessBoard extends LitElement {
         id?: string,
         part?: string
     ) {
-        if (piece === undefined) {
+        if (piece === undefined || piece === '') {
             return nothing
         }
-
+        // Required and additional styles.
         const style: Partial<CSSStyleDeclaration> = {
             opacity: '1',
             transitionProperty: '',
             transitionDuration: '0ms',
             ...styles,
         }
-
-        if (isDragSource || piece === '') {
+        // Do not display a piece that is being dragged on the source square.
+        if (isDragSource) {
             style.display = 'none'
-        }
-
-        if (piece === '') {
-            return nothing
         }
 
         if (!isFunction(this.renderPiece)) {
@@ -884,7 +922,12 @@ export class ChessBoard extends LitElement {
             ></div>
         `
     }
-
+    /**
+     * Get possible `animation` styles for the given `piece`.
+     * @param piece - The chess piece.
+     * @param animation - Possible animation.
+     * @returns Animation styles as an object.
+     */
     #getAnimationStyles (
         piece: ChessPiece | undefined,
         animation?: Animation | undefined
@@ -895,7 +938,7 @@ export class ChessBoard extends LitElement {
                 (animation.type === 'move-start' ||
                     (animation.type === 'add-start' && this.draggablePieces))
             ) {
-                // BoardPosition the moved piece absolutely at the source
+                // BoardPosition the moved piece absolutely at the source.
                 const srcSquare =
                     animation.type === 'move-start'
                         ? this.#getSquareElement(animation.source as BoardSquare)
@@ -921,7 +964,7 @@ export class ChessBoard extends LitElement {
                 (animation.type === 'move' ||
                     (animation.type === 'add' && this.draggablePieces))
             ) {
-                // Transition the moved piece to the destination
+                // Transition the moved piece to the destination.
                 return {
                     position: 'absolute',
                     transitionProperty: 'top, left',
@@ -933,7 +976,7 @@ export class ChessBoard extends LitElement {
                 }
             }
             if (!piece && animation.type === 'clear') {
-                // Preserve and transition a removed piece to opacity 0
+                // Preserve and transition a removed piece to opacity 0.
                 piece = animation.piece
                 return {
                     transitionProperty: 'opacity',
@@ -942,13 +985,13 @@ export class ChessBoard extends LitElement {
                 }
             }
             if (piece && animation.type === 'add-start') {
-                // Initialize an added piece to opacity 0
+                // Initialize an added piece to opacity 0.
                 return {
                     opacity: '0',
                 }
             }
             if (piece && animation.type === 'add') {
-                // Transition an added piece to opacity 1
+                // Transition an added piece to opacity 1.
                 return {
                     transitionProperty: 'opacity',
                     transitionDuration: `${speedToMS(this.appearSpeed)}ms`,
@@ -962,13 +1005,12 @@ export class ChessBoard extends LitElement {
     // Event Listeners
     // -------------------------------------------------------------------------
 
-    #mousedownSquare (e: MouseEvent | TouchEvent) {
-        // do nothing if we're not draggable. sparePieces implies draggable
+    #pointerdownSquare (e: PointerEvent | TouchEvent) {
+        // Do nothing if we're not draggable. sparePieces implies draggable.
         if (!this.draggablePieces && !this.sparePieces) {
             return
         }
-
-        // do nothing if there is no piece on this square
+        // Do nothing if there is no piece on this square.
         const squareEl = e.currentTarget as HTMLElement
         const square = squareEl.getAttribute('data-square') as BoardSquare
         if (square === null || !this.#currentPosition.hasOwnProperty(square)) {
@@ -980,7 +1022,7 @@ export class ChessBoard extends LitElement {
         }
         e.preventDefault()
         const pos = e instanceof MouseEvent ? e : e.changedTouches[0]
-        this.#beginDraggingPiece(
+        this.#startDraggingPiece(
             square,
             this.#currentPosition[square]!,
             pos.clientX,
@@ -988,8 +1030,8 @@ export class ChessBoard extends LitElement {
         )
     }
 
-    #mousedownSparePiece (e: MouseEvent | TouchEvent) {
-        // do nothing if sparePieces is not enabled
+    #pointerdownSparePiece (e: PointerEvent | TouchEvent) {
+        // Do nothing if sparePieces is not enabled.
         if (!this.sparePieces) {
             return
         }
@@ -998,29 +1040,24 @@ export class ChessBoard extends LitElement {
         const piece = pieceEl!.getAttribute('piece')! as ChessPiece
         e.preventDefault()
         const pos = e instanceof MouseEvent ? e : e.changedTouches[0]
-        this.#beginDraggingPiece('spare', piece, pos.clientX, pos.clientY)
+        this.#startDraggingPiece('spare', piece, pos.clientX, pos.clientY)
     }
 
-    #mouseenterSquare (e: Event) {
-        // do not fire this event if we are dragging a piece
-        // NOTE: this should never happen, but it's a safeguard
+    #pointerenterSquare (e: PointerEvent) {
+        // Do not fire this event if we are dragging a piece.
+        // NOTE: this should never happen, but it's a safeguard.
         if (this.#dragState !== undefined) {
             return
         }
-
-        // get the square
         const square = (e.currentTarget as HTMLElement).getAttribute('data-square') as BoardSquare
-
-        // NOTE: this should never happen; defensive
+        // NOTE: this should never happen; defensive.
         if (!isValidSquare(square)) {
             return
         }
-
-        // Get the piece on this square
         const piece =
             this.#currentPosition.hasOwnProperty(square) &&
             this.#currentPosition[square]!
-
+        // Dispatch custom event.
         this.dispatchEvent(
             new CustomEvent<ChessboardEvent['mouseover-square']>(
                 'mouseover-square',
@@ -1037,26 +1074,21 @@ export class ChessBoard extends LitElement {
         )
     }
 
-    #mouseleaveSquare (e: Event) {
-        // Do not fire this event if we are dragging a piece
-        // NOTE: this should never happen, but it's a safeguard
+    #pointerleaveSquare (e: PointerEvent) {
+        // Do not fire this event if we are dragging a piece.
+        // NOTE: this should never happen, but it's a safeguard.
         if (this.#dragState !== undefined) {
             return
         }
-
         const square = (e.currentTarget as HTMLElement).getAttribute('data-square') as BoardSquare
-
-        // NOTE: this should never happen; defensive
+        // NOTE: this should never happen; defensive.
         if (!isValidSquare(square)) {
             return
         }
-
-        // Get the piece on this square
         const piece =
             this.#currentPosition.hasOwnProperty(square) &&
             this.#currentPosition[square]!
-
-        // execute their function
+        // Dispatch custom event.
         this.dispatchEvent(
             new CustomEvent<ChessboardEvent['mouseout-square']>(
                 'mouseout-square',
@@ -1073,541 +1105,62 @@ export class ChessBoard extends LitElement {
         )
     }
 
-    #mousemoveWindow (e: MouseEvent | TouchEvent) {
-        // Do nothing if we are not dragging a piece
-        if (!(this.#dragState?.state === 'dragging')) {
+    #pointermoveWindow (e: PointerEvent | TouchEvent) {
+        // Do nothing if we are not dragging a piece.
+        if (!this.#isDragging) {
             return
         }
-        // Prevent screen from scrolling
+        // Prevent screen from scrolling.
         e.preventDefault()
         const pos = e instanceof MouseEvent ? e : e.changedTouches[0]
         this.#updateDraggedPiece(pos.clientX, pos.clientY)
     }
 
-    #mouseupWindow (e: MouseEvent | TouchEvent) {
-        // Do nothing if we are not dragging a piece
-        if (!(this.#dragState?.state === 'dragging')) {
+    #pointerupWindow (e: PointerEvent | TouchEvent) {
+        // Do nothing if we are not dragging a piece.
+        if (!this.#isDragging) {
             return
         }
         const pos = e instanceof MouseEvent ? e : e.changedTouches[0]
         const location = this.#isXYOnSquare(pos.clientX, pos.clientY)
-        this.#stopDraggedPiece(location)
+        this.#stopDraggingPiece(location)
     }
 
     // -------------------------------------------------------------------------
-    // Public Methods
+    // Internal methods.
     // -------------------------------------------------------------------------
 
     /**
-     * Sets the position of the board.
-     *
-     * @param useAnimation If `true`, animate to the new position. If `false`,
-     *     show the new position instantly.
+     * Calculate an array of animations that need to happen in order to get from `pos1` to `pos2`.
+     * @param pos1 - First (starting) board position.
+     * @param pos2 - Second (ending) board position.
+     * @returns Array of possible animations.
      */
-    setPosition (position: BoardPosition, useAnimation = true) {
-        position = normalizePosition(position)
-
-        // validate position object
-        if (!isValidPositionObject(position)) {
-            throw this.#error(
-                6482,
-                'Invalid value passed to the position method.',
-                position
-            )
-        }
-
-        if (useAnimation) {
-            // start the animations
-            const animations = this.#calculateAnimations(
-                this.#currentPosition,
-                position
-            )
-            this.#doAnimations(animations, this.#currentPosition, position)
-        }
-        this.#setCurrentPosition(position)
-        this.requestUpdate()
-    }
-
-    /**
-     * Sets the board to the start position.
-     *
-     * @param useAnimation If `true`, animate to the new position. If `false`,
-     *     show the new position instantly.
-     */
-    start (useAnimation?: boolean) {
-        this.setPosition('start', useAnimation)
-    }
-
-    /**
-     * Removes all the pieces on the board. If `useAnimation` is `false`, removes
-     * pieces instantly.
-     *
-     * This is shorthand for `setPosition({})`.
-     *
-     * @param useAnimation If `true`, animate to the new position. If `false`,
-     *     show the new position instantly.
-     */
-    clear (useAnimation?: boolean) {
-        this.setPosition({}, useAnimation)
-    }
-
-    /**
-     * Executes one or more moves on the board.
-     *
-     * Moves are strings the form of "e2-e4", "f6-d5", etc., Pass `false` as an
-     * argument to disable animation.
-     */
-    move (...args: Array<string | false>) {
-        let useAnimation = true
-
-        // collect the moves into an object
-        const moves: {[from: string]: string} = {}
-        for (const arg of args) {
-            // any "false" to this function means no animations
-            if (arg === false) {
-                useAnimation = false
-                continue
-            }
-
-            // skip invalid arguments
-            if (!isValidMove(arg)) {
-                this.#error(2826, 'Invalid move passed to the move method.', arg)
-                continue
-            }
-
-            const [from, to] = arg.split('-')
-            moves[from] = to
-        }
-
-        // calculate position from moves
-        const newPos = calculatePositionFromMoves(this.#currentPosition, moves)
-
-        // update the board
-        this.setPosition(newPos, useAnimation)
-
-        // return the new position object
-        return newPos
-    }
-
-    /**
-     * Flip the orientation.
-     */
-    flip () {
-        this.orientation = this.orientation === 'white' ? 'black' : 'white'
-    }
-
-    /**
-     * Recalculates board and square sizes based on the parent element and redraws
-     * the board accordingly.
-     */
-    resize () {
-        this.requestUpdate()
-    }
-
-    // -------------------------------------------------------------------------
-    // Lifecycle Callbacks
-    // -------------------------------------------------------------------------
-
-    firstUpdated () {
-        // We need to re-render to read the size of the container
-        this.requestUpdate()
-        if (window.ResizeObserver !== undefined) {
-            new ResizeObserver(() => {
-                this.resize()
-            }).observe(this)
-        }
-    }
-
-    connectedCallback () {
-        super.connectedCallback()
-        window.addEventListener('mousemove', this.#mousemoveWindow.bind(this))
-        window.addEventListener('mouseup', this.#mouseupWindow.bind(this))
-        window.addEventListener('touchmove', this.#mousemoveWindow.bind(this), {
-            passive: false,
-        })
-        window.addEventListener('touchend', this.#mouseupWindow.bind(this), {
-            passive: false,
-        })
-    }
-
-    disconnectedCallback () {
-        super.disconnectedCallback()
-        window.removeEventListener('mousemove', this.#mousemoveWindow.bind(this))
-        window.removeEventListener('mouseup', this.#mouseupWindow.bind(this))
-        window.removeEventListener('touchmove', this.#mousemoveWindow.bind(this))
-        window.removeEventListener('touchend', this.#mouseupWindow.bind(this))
-    }
-
-    // -------------------------------------------------------------------------
-    // Control Flow
-    // -------------------------------------------------------------------------
-
-    #setCurrentPosition (position: BoardPositionObject) {
-        const oldPos = deepCopy(this.#currentPosition)
-        const newPos = deepCopy(position)
-        const oldFen = objToFen(oldPos)
-        const newFen = objToFen(newPos)
-
-        // do nothing if no change in position
-        if (oldFen === newFen) return
-
-        // Fire change event
-        this.dispatchEvent(
-            new CustomEvent<ChessboardEvent['change']>(
-                'change', 
-                {
-                    bubbles: true,
-                    detail: {
-                        oldPosition: oldPos,
-                        newPosition: newPos,
-                    },
-                }
-            )
-        )
-
-        // update state
-        this.#currentPosition = position
-    }
-
-    #isXYOnSquare (x: number, y: number): BoardLocation | 'offboard' {
-        // TODO: remove cast when TypeScript fixes ShadowRoot.elementsFromPoint
-        const elements = (this
-            .shadowRoot as unknown as Document)!.elementsFromPoint(x, y)
-        const squareEl = elements.find((e) => e.part.contains('square'))
-        const square =
-            squareEl === undefined
-                ? 'offboard'
-                : (squareEl.getAttribute('data-square') as BoardLocation)
-        return square
-    }
-
-    #highlightSquare (square: BoardSquare, value = null as HighlightStyle | null) {
-        if (value) {
-            this.#highlightSquares.set(square, value)
-        } else {
-            this.#highlightSquares.delete(square)
-        }
-        this.requestUpdate('_highlightSquares')
-    }
-
-    async #snapbackDraggedPiece () {
-        assertIsDragging(this.#dragState)
-        const { source, piece } = this.#dragState
-
-        // there is no "snapback" for spare pieces
-        if (source === 'spare') {
-            return this.#trashDraggedPiece()
-        }
-
-        this.#dragState = {
-            state: 'snapback',
-            piece,
-            source,
-        }
-
-        // Wait for a paint
-        this.requestUpdate()
-        await new Promise((resolve) => setTimeout(resolve, 0))
-
-        return new Promise<void>((resolve) => {
-            const transitionComplete = () => {
-                this._draggedPieceElement.removeEventListener(
-                    'transitionend',
-                    transitionComplete
-                )
-                resolve()
-
-                this.dispatchEvent(
-                    new CustomEvent<ChessboardEvent['snapback-end']>(
-                        'snapback-end', 
-                        {
-                            bubbles: true,
-                            detail: {
-                                piece,
-                                square: source,
-                                position: deepCopy(this.#currentPosition),
-                                orientation: this.orientation,
-                            },
-                        }
-                    )
-                )
-            }
-            this._draggedPieceElement.addEventListener(
-                'transitionend',
-                transitionComplete
-            )
-        })
-    }
-
-    async #trashDraggedPiece () {
-        assertIsDragging(this.#dragState)
-        const { source, piece } = this.#dragState
-
-        // remove the source piece
-        const newPosition = deepCopy(this.#currentPosition)
-        delete newPosition[source]
-        this.#setCurrentPosition(newPosition)
-
-        this.#dragState = {
-            state: 'trash',
-            piece,
-            x: this.#dragState.x,
-            y: this.#dragState.y,
-            source: this.#dragState.source,
-        }
-
-        // Wait for a paint
-        this.requestUpdate()
-        await new Promise((resolve) => setTimeout(resolve, 0))
-
-        return new Promise<void>((resolve) => {
-            const transitionComplete = () => {
-                this._draggedPieceElement.removeEventListener(
-                    'transitionend',
-                    transitionComplete
-                )
-                resolve()
-            }
-            this._draggedPieceElement.addEventListener(
-                'transitionend',
-                transitionComplete
-            )
-        })
-    }
-
-    async #dropDraggedPieceOnSquare (square: BoardLocation) {
-        assertIsDragging(this.#dragState)
-        const { source, piece } = this.#dragState
-
-        // update position
-        const newPosition = deepCopy(this.#currentPosition)
-        delete newPosition[source]
-        newPosition[square] = piece
-        this.#setCurrentPosition(newPosition)
-
-        this.#dragState = {
-            state: 'snap',
-            piece,
-            location: square,
-            source: square,
-        }
-
-        // Wait for a paint
-        this.requestUpdate()
-        await new Promise((resolve) => setTimeout(resolve, 0))
-
-        return new Promise<void>((resolve) => {
-            const transitionComplete = () => {
-                this._draggedPieceElement.removeEventListener(
-                    'transitionend',
-                    transitionComplete
-                )
-                resolve()
-
-                // Fire the snap-end event
-                this.dispatchEvent(
-                    new CustomEvent<ChessboardEvent['snap-end']>(
-                        'snap-end', 
-                        {
-                            bubbles: true,
-                            detail: {
-                                source,
-                                square,
-                                piece,
-                            },
-                        }
-                    )
-                )
-            }
-            this._draggedPieceElement.addEventListener(
-                'transitionend',
-                transitionComplete
-            )
-        })
-    }
-
-    #beginDraggingPiece (
-        source: BoardLocation,
-        piece: ChessPiece,
-        x: number,
-        y: number
-    ) {
-        // Fire cancalable drag-start event
-        const event = new CustomEvent<ChessboardEvent['drag-start']>(
-            'drag-start',
-            {
-                bubbles: true,
-                cancelable: true,
-                detail: {
-                    source,
-                    piece,
-                    position: deepCopy(this.#currentPosition),
-                    orientation: this.orientation,
-                },
-            }
-        )
-        this.dispatchEvent(event)
-        if (event.defaultPrevented) {
-            return
-        }
-
-        // set state
-        this.#dragState = {
-            state: 'dragging',
-            x,
-            y,
-            piece,
-            // if the piece came from spare pieces, location is offboard
-            location: source === 'spare' ? 'offboard' : source,
-            source,
-        }
-        this.requestUpdate()
-    }
-
-    #updateDraggedPiece (x: number, y: number) {
-        assertIsDragging(this.#dragState)
-
-        // put the dragged piece over the mouse cursor
-        this.#dragState.x = x
-        this.#dragState.y = y
-
-        this.requestUpdate()
-
-        const location = this.#isXYOnSquare(x, y)
-        // do nothing more if the location has not changed
-        if (location === this.#dragState.location) {
-            return
-        }
-
-        // remove highlight from previous square
-        if (isValidSquare(this.#dragState.location)) {
-            this.#highlightSquare(this.#dragState.location as BoardSquare, null)
-        }
-
-        // add highlight to new square
-        if (isValidSquare(location)) {
-            this.#highlightSquare(location as BoardSquare, 'active')
-        }
-
-        this.dispatchEvent(
-            new CustomEvent<ChessboardEvent['drag-move']>(
-                'drag-move',
-                {
-                    bubbles: true,
-                    detail: {
-                        newLocation: location,
-                        oldLocation: this.#dragState.location,
-                        source: this.#dragState.source,
-                        piece: this.#dragState.piece,
-                        position: deepCopy(this.#currentPosition),
-                        orientation: this.orientation,
-                    },
-                }
-            )
-        )
-
-        // update state
-        this.#dragState.location = location
-    }
-
-    async #stopDraggedPiece (location: BoardLocation) {
-        assertIsDragging(this.#dragState)
-        const {source, piece} = this.#dragState
-        // determine what the action should be
-        let action: Action = 'drop'
-        if (location === 'offboard') {
-            action = this.dropOffBoard === 'trash' ? 'trash' : 'snapback'
-        }
-        const newPosition = deepCopy(this.#currentPosition)
-        const oldPosition = deepCopy(this.#currentPosition)
-
-        // source piece is a spare piece and position is on the board
-        if (source === 'spare' && isValidSquare(location)) {
-            // add the piece to the board
-            newPosition[location] = piece
-        }
-
-        // source piece was on the board
-        if (isValidSquare(source)) {
-            // remove the piece from the board
-            delete newPosition[source]
-            // new position is on the board
-            if (isValidSquare(location)) {
-                // move the piece
-                newPosition[location] = piece
-            }
-        }
-
-        // Fire the drop event
-        // Listeners can potentially change the drop action
-        const dropEvent = new CustomEvent<ChessboardEvent['drop']>(
-            'drop',
-            {
-                bubbles: true,
-                detail: {
-                    source,
-                    target: location,
-                    piece,
-                    newPosition,
-                    oldPosition,
-                    orientation: this.orientation,
-                    setAction (a: Action) {
-                        action = a
-                    },
-                },
-            }
-        )
-        this.dispatchEvent(dropEvent)
-
-        this.#highlightSquares.clear()
-
-        // do it!
-        if (action === 'snapback') {
-            await this.#snapbackDraggedPiece()
-        } else if (action === 'trash') {
-            await this.#trashDraggedPiece()
-        } else if (action === 'drop') {
-            await this.#dropDraggedPieceOnSquare(location)
-        }
-
-        // clear state
-        this.#dragState = undefined
-
-        // Render the final non-dragging state
-        this.requestUpdate()
-    }
-
-    // -------------------------------------------------------------------------
-    // Animations
-    // -------------------------------------------------------------------------
-
-    // calculate an array of animations that need to happen in order to get
-    // from pos1 to pos2
     #calculateAnimations (
         pos1: BoardPositionObject,
         pos2: BoardPositionObject
     ): Animation[] {
-        // make copies of both
+        // Make copies of both.
         pos1 = deepCopy(pos1)
         pos2 = deepCopy(pos2)
-
+        // Always return an array.
         const animations: Animation[] = []
         const squaresMovedTo: {[square: string]: boolean} = {}
-
-        // remove pieces that are the same in both positions
+        // Ignore pieces that are the same in both positions.
         for (const i in pos2) {
-            if (!pos2.hasOwnProperty(i)) continue
-
+            if (!pos2.hasOwnProperty(i)) {
+                continue
+            }
             if (pos1.hasOwnProperty(i) && pos1[i] === pos2[i]) {
                 delete pos1[i]
                 delete pos2[i]
             }
         }
-
-        // find all the "move" animations
+        // Find all the "move" animations.
         for (const i in pos2) {
-            if (!pos2.hasOwnProperty(i)) continue
-
+            if (!pos2.hasOwnProperty(i)) {
+                continue
+            }
             const closestPiece = findClosestPiece(pos1, pos2[i]!, i as BoardSquare)
             if (closestPiece) {
                 animations.push({
@@ -1616,62 +1169,59 @@ export class ChessBoard extends LitElement {
                     destination: i as BoardSquare,
                     piece: pos2[i]!,
                 })
-
+                // Remove the processed pieces.
                 delete pos1[closestPiece]
                 delete pos2[i]
                 squaresMovedTo[i] = true
             }
         }
-
-        // "add" animations
+        // '"add" animations for new pieces on the board.
         for (const i in pos2) {
             if (!pos2.hasOwnProperty(i)) {
                 continue
             }
-
             animations.push({
                 type: 'add',
                 square: i as BoardSquare,
                 piece: pos2[i]!,
             })
-
             delete pos2[i]
         }
-
-        // "clear" animations
+        // "clear" animations for pieces removed from the board.
         for (const i in pos1) {
-            if (!pos1.hasOwnProperty(i)) continue
-
-            // do not clear a piece if it is on a square that is the result
-            // of a "move", ie: a piece capture
-            if (squaresMovedTo.hasOwnProperty(i)) continue
-
+            if (!pos1.hasOwnProperty(i)) {
+                continue
+            }
+            // Do not clear a piece if it is on a square that is the result of a "move", ie: a piece capture.
+            if (squaresMovedTo.hasOwnProperty(i)) {
+                continue
+            }
             animations.push({
                 type: 'clear',
                 square: i as BoardSquare,
                 piece: pos1[i]!,
             })
-
             delete pos1[i]
         }
-
         return animations
     }
-
-    // execute an array of animations
+    /**
+     * Perform the given `animations` to change the state of the board.
+     * @param animations - Array of animations to perform.
+     * @param oldPos - The starting board position.
+     * @param newPos - The resulting board position.
+     */
     async #doAnimations (
         animations: Animation[],
         oldPos: BoardPositionObject,
         newPos: BoardPositionObject
     ) {
-        if (animations.length === 0) {
+        if (!animations.length) {
             return
         }
-
         let numFinished = 0
         const transitionEndListener = () => {
             numFinished++
-
             if (numFinished === animations.length) {
                 this.shadowRoot!.removeEventListener(
                     'transitionend',
@@ -1693,8 +1243,7 @@ export class ChessBoard extends LitElement {
             }
         }
         this.shadowRoot!.addEventListener('transitionend', transitionEndListener)
-
-        // Render once with added pieces at opacity 0
+        // Render once with added pieces at opacity 0 to "fade the pieces in".
         this.#animations.clear()
         for (const animation of animations) {
             if (animation.type === 'add' || animation.type === 'add-start') {
@@ -1711,12 +1260,10 @@ export class ChessBoard extends LitElement {
                 this.#animations.set(animation.square, animation)
             }
         }
-
-        // Wait for a paint
+        // Wait for a paint.
         this.requestUpdate()
         await new Promise((resolve) => setTimeout(resolve, 0))
-
-        // Render again with the piece at opacity 1 with a transition
+        // Render again with the piece at opacity 1 with a transition.
         this.#animations.clear()
         for (const animation of animations) {
             if (animation.type === 'move' || animation.type === 'move-start') {
@@ -1727,11 +1274,65 @@ export class ChessBoard extends LitElement {
         }
         this.requestUpdate()
     }
-
-    // -------------------------------------------------------------------------
-    // Validation / Errors
-    // -------------------------------------------------------------------------
-
+    /**
+     * Place the currently dragged piece on the given `square`.
+     * @param square - The target square name.
+     * @returns A promise that resolves when the action is complete.
+     */
+    async #dropDraggedPieceOnSquare (square: BoardLocation) {
+        isDragging(this.#dragState)
+        const { source, piece } = this.#dragState
+        // Update position.
+        const newPosition = deepCopy(this.#currentPosition)
+        delete newPosition[source]
+        newPosition[square] = piece
+        this.#setCurrentPosition(newPosition)
+        // Set initial state.
+        this.#dragState = {
+            state: 'snap',
+            piece,
+            location: square,
+            source: square,
+        }
+        // Wait for a paint.
+        this.requestUpdate()
+        await new Promise((resolve) => setTimeout(resolve, 0))
+        // Promise that resolves when the piece has reached its position on the square.
+        return new Promise<void>((resolve) => {
+            const transitionComplete = () => {
+                this._draggedPieceElement.removeEventListener(
+                    'transitionend',
+                    transitionComplete
+                )
+                resolve()
+                // Fire the snap-end event.
+                this.dispatchEvent(
+                    new CustomEvent<ChessboardEvent['snap-end']>(
+                        'snap-end', 
+                        {
+                            bubbles: true,
+                            detail: {
+                                source,
+                                square,
+                                piece,
+                            },
+                        }
+                    )
+                )
+            }
+            this._draggedPieceElement.addEventListener(
+                'transitionend',
+                transitionComplete
+            )
+        })
+    }
+    /**
+     * Create and dispatch a new error.
+     * @param code - Error code.
+     * @param msg - Error message.
+     * @param _obj - Possible error object?
+     * @returns The created error.
+     */
     #error (code: number, msg: string, _obj?: unknown) {
         const errorText = `Chessboard Error ${code} : ${msg}`
         this.dispatchEvent(
@@ -1740,5 +1341,427 @@ export class ChessBoard extends LitElement {
             })
         )
         return new Error(errorText)
+    }
+    /**
+     * Highlight the given square.
+     * @param square - Square name.
+     * @param value - Optional highlight style.
+     */
+    #highlightSquare (square: BoardSquare, value = null as HighlightStyle | null) {
+        if (value) {
+            this.#highlightSquares.set(square, value)
+        } else {
+            this.#highlightSquares.delete(square)
+        }
+        this.requestUpdate('_highlightSquares')
+    }
+    /**
+     * Check which square (or off the board) the given window x,y position is.
+     * @param x - Pointer x-position.
+     * @param y - Pointer y-position.
+     * @returns Square name 'offboard'.
+     */
+    #isXYOnSquare (x: number, y: number): BoardLocation | 'offboard' {
+        // TODO: remove cast when TypeScript fixes ShadowRoot.elementsFromPoint
+        const elements = (this
+            .shadowRoot as unknown as Document)!.elementsFromPoint(x, y)
+        const squareEl = elements.find((e) => e.part.contains('square'))
+        const square =
+            squareEl === undefined
+                ? 'offboard'
+                : (squareEl.getAttribute('data-square') as BoardLocation)
+        return square
+    }
+    /**
+     * Set the board to the given board `position`.
+     * @param position - The position to set.
+     */
+    #setCurrentPosition (position: BoardPositionObject) {
+        const oldPos = deepCopy(this.#currentPosition)
+        const newPos = deepCopy(position)
+        const oldFen = objToFen(oldPos)
+        const newFen = objToFen(newPos)
+        // Do nothing if no change in position.
+        if (oldFen === newFen) {
+            return
+        }
+        // Fire change event.
+        this.dispatchEvent(
+            new CustomEvent<ChessboardEvent['change']>(
+                'change', 
+                {
+                    bubbles: true,
+                    detail: {
+                        oldPosition: oldPos,
+                        newPosition: newPos,
+                    },
+                }
+            )
+        )
+        // Update board state.
+        this.#currentPosition = position
+    }
+    /**
+     * Perform a 'snapback' action for the given piece, or trash it if it is a spare piece.
+     * @returns A promise that resolves when the action is complete.
+     */
+    async #snapbackDraggedPiece () {
+        isDragging(this.#dragState)
+        const { source, piece } = this.#dragState
+        // There is no "snapback" for spare pieces.
+        if (source === 'spare') {
+            return this.#trashDraggedPiece()
+        }
+        // Set initial state.
+        this.#dragState = {
+            state: 'snapback',
+            piece,
+            source,
+        }
+        // Wait for a paint.
+        this.requestUpdate()
+        await new Promise((resolve) => setTimeout(resolve, 0))
+        // Promise that resolves when the snapback is complete.
+        return new Promise<void>((resolve) => {
+            const transitionComplete = () => {
+                this._draggedPieceElement.removeEventListener(
+                    'transitionend',
+                    transitionComplete
+                )
+                resolve()
+                this.dispatchEvent(
+                    new CustomEvent<ChessboardEvent['snapback-end']>(
+                        'snapback-end', 
+                        {
+                            bubbles: true,
+                            detail: {
+                                piece,
+                                square: source,
+                                position: deepCopy(this.#currentPosition),
+                                orientation: this.orientation,
+                            },
+                        }
+                    )
+                )
+            }
+            this._draggedPieceElement.addEventListener(
+                'transitionend',
+                transitionComplete
+            )
+        })
+    }
+    /**
+     * Start dragging a chess `piece`.
+     * @param source - Source square of the dragged piece.
+     * @param piece - The dragged chess piece.
+     * @param x - Window x-position of the pointer at start of the drag operation.
+     * @param y - Window y-position of the pointer at start of the drag operation.
+     */
+    #startDraggingPiece (
+        source: BoardLocation,
+        piece: ChessPiece,
+        x: number,
+        y: number
+    ) {
+        // Fire cancalable drag-start event.
+        const event = new CustomEvent<ChessboardEvent['drag-start']>(
+            'drag-start',
+            {
+                bubbles: true,
+                cancelable: true,
+                detail: {
+                    source,
+                    piece,
+                    position: deepCopy(this.#currentPosition),
+                    orientation: this.orientation,
+                },
+            }
+        )
+        // Dispatch the drag-start event.
+        this.dispatchEvent(event)
+        if (event.defaultPrevented) {
+            return
+        }
+        // Set initial state.
+        this.#dragState = {
+            state: 'dragging',
+            x,
+            y,
+            piece,
+            // If the piece came from spare pieces, location is offboard.
+            location: source === 'spare' ? 'offboard' : source,
+            source,
+        }
+        this.requestUpdate()
+    }
+    /**
+     * Stop the piece drag operation.
+     * @param location - Board position where the operation stopped.
+     */
+    async #stopDraggingPiece (location: BoardLocation) {
+        isDragging(this.#dragState)
+        const { source, piece } = this.#dragState
+        // Determine what the action should be.
+        let action: Action = 'drop'
+        if (location === 'offboard') {
+            action = this.dropOffBoard === 'trash' ? 'trash' : 'snapback'
+        }
+        const newPosition = deepCopy(this.#currentPosition)
+        const oldPosition = deepCopy(this.#currentPosition)
+        // Ssee if a spare piece was placed on the board.
+        if (source === 'spare' && isValidSquare(location)) {
+            newPosition[location] = piece
+        }
+        // See if source piece was on the board.
+        if (isValidSquare(source)) {
+            // Remove the piece from the board.
+            delete newPosition[source]
+            // New position is on the board.
+            if (isValidSquare(location)) {
+                newPosition[location] = piece
+            }
+        }
+        // Dispatch the drop event.
+        // Allow listeners to change the drop action using the `setAction` method..
+        const dropEvent = new CustomEvent<ChessboardEvent['drop']>(
+            'drop',
+            {
+                bubbles: true,
+                detail: {
+                    source,
+                    target: location,
+                    piece,
+                    newPosition,
+                    oldPosition,
+                    orientation: this.orientation,
+                    setAction (a: Action) {
+                        action = a
+                    },
+                },
+            }
+        )
+        this.dispatchEvent(dropEvent)
+        // Remove square highlight hints from the board.
+        this.#highlightSquares.clear()
+        // Check if action was changed and perform it.
+        if (action === 'snapback') {
+            await this.#snapbackDraggedPiece()
+        } else if (action === 'trash') {
+            await this.#trashDraggedPiece()
+        } else if (action === 'drop') {
+            await this.#dropDraggedPieceOnSquare(location)
+        }
+        // Clear dragging state.
+        this.#dragState = undefined
+        // Render the final post-dragging board state.
+        this.requestUpdate()
+    }
+    /**
+     * Trash (remove) the currently dragged piece.
+     * @returns A promise that resolves when the action is complete.
+     */
+    async #trashDraggedPiece () {
+        isDragging(this.#dragState)
+        const { source, piece } = this.#dragState
+        // Remove the source piece.
+        const newPosition = deepCopy(this.#currentPosition)
+        delete newPosition[source]
+        this.#setCurrentPosition(newPosition)
+        // Set initial state.
+        this.#dragState = {
+            state: 'trash',
+            piece,
+            x: this.#dragState.x,
+            y: this.#dragState.y,
+            source: this.#dragState.source,
+        }
+        // Wait for a paint.
+        this.requestUpdate()
+        await new Promise((resolve) => setTimeout(resolve, 0))
+        // Promise that resolves when the piece has been trashed.
+        return new Promise<void>((resolve) => {
+            const transitionComplete = () => {
+                this._draggedPieceElement.removeEventListener(
+                    'transitionend',
+                    transitionComplete
+                )
+                resolve()
+            }
+            this._draggedPieceElement.addEventListener(
+                'transitionend',
+                transitionComplete
+            )
+        })
+    }
+    /**
+     * Update the position of a piece being dragged.
+     * @param x - Current window x-position of the pointer.
+     * @param y - Current window y-position of the pointer.
+     */
+    #updateDraggedPiece (x: number, y: number) {
+        isDragging(this.#dragState)
+        // Put the dragged piece over the mouse cursor.
+        this.#dragState.x = x
+        this.#dragState.y = y
+        this.requestUpdate()
+        // Check the current lcoation of the pointer.
+        const location = this.#isXYOnSquare(x, y)
+        // Do nothing more if the location has not changed.
+        if (location === this.#dragState.location) {
+            return
+        }
+        // Remove highlight from previous square.
+        if (isValidSquare(this.#dragState.location)) {
+            this.#highlightSquare(this.#dragState.location as BoardSquare, null)
+        }
+        // Add highlight to new square.
+        if (isValidSquare(location)) {
+            this.#highlightSquare(location as BoardSquare, 'active')
+        }
+        // Dispatch the drag-move event.
+        this.dispatchEvent(
+            new CustomEvent<ChessboardEvent['drag-move']>(
+                'drag-move',
+                {
+                    bubbles: true,
+                    detail: {
+                        newLocation: location,
+                        oldLocation: this.#dragState.location,
+                        source: this.#dragState.source,
+                        piece: this.#dragState.piece,
+                        position: deepCopy(this.#currentPosition),
+                        orientation: this.orientation,
+                    },
+                }
+            )
+        )
+        // Update drag state.
+        this.#dragState.location = location
+    }
+
+    // -------------------------------------------------------------------------
+    // Public Methods
+    // -------------------------------------------------------------------------
+
+    /**
+     * Sets the position of the board.
+     * @param useAnimation If `true`, animate to the new position. If `false`, show the new position instantly.
+     */
+    setPosition (position: BoardPosition, useAnimation = true) {
+        position = normalizePosition(position)
+        // Validate position object.
+        if (!isValidPositionObject(position)) {
+            throw this.#error(
+                6482,
+                'Invalid value passed to the position method.',
+                position
+            )
+        }
+        if (useAnimation) {
+            // Start the animations.
+            const animations = this.#calculateAnimations(
+                this.#currentPosition,
+                position
+            )
+            this.#doAnimations(animations, this.#currentPosition, position)
+        }
+        this.#setCurrentPosition(position)
+        this.requestUpdate()
+    }
+    /**
+     * Sets the board to the start position.
+     * @param useAnimation If `true`, animate to the new position. If `false`, show the new position instantly.
+     */
+    start (useAnimation?: boolean) {
+        this.setPosition('start', useAnimation)
+    }
+
+    /**
+     * Removes all the pieces on the board. If `useAnimation` is `false`, removes
+     * pieces instantly.
+     *
+     * This is shorthand for `setPosition({})`.
+     *
+     * @param useAnimation If `true`, animate to the new position. If `false`, show the new position instantly.
+     */
+    clear (useAnimation?: boolean) {
+        this.setPosition({}, useAnimation)
+    }
+
+    /**
+     * Executes one or more moves on the board.
+     *
+     * Moves are strings the form of "e2-e4", "f6-d5", etc., Pass `false` as an argument to disable animation.
+     */
+    move (...args: Array<string | false>) {
+        let useAnimation = true
+        // Collect the moves into an object.
+        const moves: {[from: string]: string} = {}
+        for (const arg of args) {
+            // Any "false" to this function means no animations.
+            if (arg === false) {
+                useAnimation = false
+                continue
+            }
+            // Skip invalid arguments.
+            if (!isValidMove(arg)) {
+                this.#error(2826, 'Invalid move passed to the move method.', arg)
+                continue
+            }
+            const [from, to] = arg.split('-')
+            moves[from] = to
+        }
+        // Calculate position from moves.
+        const newPos = calculatePositionFromMoves(this.#currentPosition, moves)
+        // Update the board.
+        this.setPosition(newPos, useAnimation)
+        // Return the new position object.
+        return newPos
+    }
+    /**
+     * Flip the orientation.
+     */
+    flip () {
+        this.orientation = this.orientation === 'white' ? 'black' : 'white'
+    }
+    /**
+     * Recalculates board and square sizes based on the parent element and redraws the board accordingly.
+     */
+    resize () {
+        this.requestUpdate()
+    }
+
+    // -------------------------------------------------------------------------
+    // Lifecycle Callbacks
+    // -------------------------------------------------------------------------
+
+    firstUpdated () {
+        // We need to re-render to read the size of the container.
+        this.requestUpdate()
+        if (window.ResizeObserver !== undefined) {
+            new ResizeObserver(() => {
+                this.resize()
+            }).observe(this)
+        }
+    }
+
+    connectedCallback () {
+        super.connectedCallback()
+        window.addEventListener('pointermove', this.#pointermoveWindow.bind(this))
+        window.addEventListener('pointerup', this.#pointerupWindow.bind(this))
+        window.addEventListener('touchmove', this.#pointermoveWindow.bind(this), {
+            passive: false,
+        })
+        window.addEventListener('touchend', this.#pointerupWindow.bind(this), {
+            passive: false,
+        })
+    }
+
+    disconnectedCallback () {
+        super.disconnectedCallback()
+        window.removeEventListener('pointermove', this.#pointermoveWindow.bind(this))
+        window.removeEventListener('pointerup', this.#pointerupWindow.bind(this))
+        window.removeEventListener('touchmove', this.#pointermoveWindow.bind(this))
+        window.removeEventListener('touchend', this.#pointerupWindow.bind(this))
     }
 }

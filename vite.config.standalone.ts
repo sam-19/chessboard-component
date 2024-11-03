@@ -1,17 +1,19 @@
 import { defineConfig } from 'vite'
 import { resolve } from 'path'
 import { fileURLToPath, URL } from 'url'
+import tsconfigPaths from 'vite-tsconfig-paths'
+import { viteSingleFile } from 'vite-plugin-singlefile'
 
 export default defineConfig({
     mode: 'production',
     build: {
         lib: {
-            entry: resolve(__dirname, './src/index.ts'),
-            name: 'ChessboardComponent',
-            fileName: 'chessboard-component',
+            entry: resolve(__dirname, './index.html'),
+            name: 'Chessboard',
+            fileName: 'chessboard',
         },
         minify: 'esbuild',
-        outDir: resolve(__dirname, 'umd'),
+        outDir: resolve(__dirname, 'build'),
         rollupOptions: {
             external: [],
             output: {
@@ -27,14 +29,18 @@ export default defineConfig({
         esbuildOptions: {
             target: 'esnext',
         },
-    },
+     },
+    plugins: [
+        tsconfigPaths(),
+        viteSingleFile(),
+    ],
     define: {
         __INTLIFY_JIT_COMPILATION__: true,
         'process.env': process.env,
     },
     resolve: {
         alias: {
-            '#': fileURLToPath(new URL('./src/', import.meta.url)),
+            '@': fileURLToPath(new URL('./src', import.meta.url)),
         },
     },
 })

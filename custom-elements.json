@@ -4,6 +4,138 @@
   "modules": [
     {
       "kind": "javascript-module",
+      "path": "vite.config.package.ts",
+      "declarations": [],
+      "exports": [
+        {
+          "kind": "js",
+          "name": "default",
+          "declaration": {
+            "module": "vite.config.package.ts"
+          }
+        }
+      ]
+    },
+    {
+      "kind": "javascript-module",
+      "path": "vite.config.standalone.ts",
+      "declarations": [],
+      "exports": [
+        {
+          "kind": "js",
+          "name": "default",
+          "declaration": {
+            "module": "vite.config.standalone.ts"
+          }
+        }
+      ]
+    },
+    {
+      "kind": "javascript-module",
+      "path": "dist/chessboard-element.js",
+      "declarations": [
+        {
+          "kind": "variable",
+          "name": "ChessBoardElement",
+          "default": "class ChessBoardElement extends LitElement { constructor() { super(...arguments); /** * Whether to show the board notation. */ this.hideNotation = false; /** * The orientation of the board. `'white'` for the white player at the bottom, * `'black'` for the black player at the bottom. */ this.orientation = 'white'; /** * If `true`, pieces on the board are draggable to other squares. */ this.draggablePieces = false; /** * If `'snapback'`, pieces dropped off the board will return to their original * square. If `'trash'`, pieces dropped off the board will be removed from the * board. * * This property has no effect when `draggable` is `false`. */ this.dropOffBoard = 'snapback'; /** * A function that renders DOM for a piece to a container element. This * function can render any elements and text, including SVG. * * The default value renders an SVG image of the piece, unless the * `pieceTheme` property is set, then it uses `pieceTheme` to get the URL for * an `<img>` element. * * @default Function */ this.renderPiece = (piece, container) => { let pieceImage = undefined; if (isString(this.pieceTheme)) { pieceImage = interpolateTemplate(this.pieceTheme, { piece: piece }); } else if (isFunction(this.pieceTheme)) { pieceImage = this.pieceTheme(piece); } if (pieceImage === undefined) { renderWikipediaSVGPiece(piece, container); } else { render(html `<img class=\"piece-image\" src=${pieceImage} />`, container); } }; /** * Animation speed for when pieces move between squares or from spare pieces * to the board. */ this.moveSpeed = DEFAULT_MOVE_SPEED; /** * Animation speed for when pieces that were dropped outside the board return * to their original square. */ this.snapbackSpeed = DEFAULT_SNAPBACK_SPEED; /** * Animation speed for when pieces \\\"snap\\\" to a square when dropped. */ this.snapSpeed = DEFAULT_SNAP_SPEED; /** * Animation speed for when pieces are removed. */ this.trashSpeed = DEFAULT_TRASH_SPEED; /** * Animation speed for when pieces appear on a square. * * Note that the \"appear\" animation only occurs when `sparePieces` is `false`. */ this.appearSpeed = DEFAULT_APPEAR_SPEED; /** * If `true`, the board will have spare pieces that can be dropped onto the * board. If `sparePieces` is set to `true`, `draggablePieces` gets set to * `true` as well. */ this.sparePieces = false; this._highlightedSquares = new Set(); this._animations = new Map(); this._currentPosition = {}; } static { this.styles = styles; } /** * The current position as a FEN string. */ get fen() { return objToFen(this._currentPosition); } /** * The current position of the board, as a `PositionObject`. This property may * be set externally, but only to valid `PositionObject`s. The value is copied * before being applied to the board. Changes to the position object are not * reflected in th rendering. * * To set the position using FEN, or a keyword like `'start'`, or to use * animations, use the `setPosition` method. */ get position() { return this._currentPosition; } set position(v) { const oldValue = this._currentPosition; this._setCurrentPosition(v); this.requestUpdate('position', oldValue); } /** * Whether to show the board notation. This is always the inverse of * `hideNotation`, which reflects the `hide-notation` attribute. * * @default true */ get showNotation() { return !this.hideNotation; } set showNotation(v) { this.hideNotation = !v; } get _squareSize() { // Note: this isn't cached, but is called during user interactions, so we // have a bit of time to use under RAIL guidelines. return this.offsetWidth / 8; } _getSquareElement(square) { return this.shadowRoot.getElementById(squareId(square)); } _getSparePieceElement(piece) { return this.shadowRoot.getElementById(sparePieceId(piece)); } // ------------------------------------------------------------------------- // DOM Building // ------------------------------------------------------------------------- render() { return html ` <div part=\"spare-pieces\"> ${this._renderSparePieces(this.orientation === 'white' ? 'black' : 'white')} </div> ${this._renderBoard()} <div part=\"spare-pieces\"> ${this._renderSparePieces(this.orientation === 'white' ? 'white' : 'black')} </div> <div id=\"dragged-pieces\" part=\"dragged-pieces\" style=${styleMap({ width: `0px`, height: `0px`, overflow: `visible`, })} > ${this._renderDraggedPiece()} </div> `; } _renderSparePieces(color) { if (!this.sparePieces) { return nothing; } const pieces = color === 'black' ? blackPieces : whitePieces; // The empty <div>s below are placeholders to get the shelf to line up with // the board's grid. Another option would be to try to use the same grid, // either with a single container, or subgrid/display:contents when those // are available. return html ` <div></div> ${pieces.map((p) => html ` <div id=\"spare-${p}\" @mousedown=${this._mousedownSparePiece} @touchstart=${this._mousedownSparePiece} > ${this._renderPiece(p, {}, false, sparePieceId(p))} </div> `)} <div></div> `; } _renderDraggedPiece() { const styles = { height: `${this._squareSize}px`, width: `${this._squareSize}px`, }; const dragState = this._dragState; if (dragState !== undefined) { styles.display = 'block'; const rect = this.getBoundingClientRect(); if (dragState.state === 'dragging') { const { x, y } = dragState; Object.assign(styles, { top: `${y - rect.top - this._squareSize / 2}px`, left: `${x - rect.left - this._squareSize / 2}px`, }); } else if (dragState.state === 'snapback') { const { source } = dragState; const square = this._getSquareElement(source); const squareRect = square.getBoundingClientRect(); Object.assign(styles, { transitionProperty: 'top, left', transitionDuration: `${speedToMS(this.snapbackSpeed)}ms`, top: `${squareRect.top - rect.top}px`, left: `${squareRect.left - rect.left}px`, }); } else if (dragState.state === 'trash') { const { x, y } = dragState; Object.assign(styles, { transitionProperty: 'opacity', transitionDuration: `${speedToMS(this.trashSpeed)}ms`, opacity: '0', top: `${y - rect.top - this._squareSize / 2}px`, left: `${x - rect.left - this._squareSize / 2}px`, }); } else if (dragState.state === 'snap') { const square = this._getSquareElement(dragState.location); const squareRect = square.getBoundingClientRect(); Object.assign(styles, { transitionProperty: 'top, left', transitionDuration: `${speedToMS(this.snapSpeed)}ms`, top: `${squareRect.top - rect.top}px`, left: `${squareRect.left - rect.left}px`, }); } } return this._renderPiece(this._dragState?.piece ?? '', styles, false, undefined, 'dragged-piece'); } _renderBoard() { const squares = []; const isFlipped = this.orientation === 'black'; for (let row = 0; row < 8; row++) { for (let col = 0; col < 8; col++) { const file = COLUMNS[isFlipped ? 7 - col : col]; const rank = isFlipped ? row + 1 : 8 - row; const square = `${file}${rank}`; const squareColor = getSquareColor(square); let piece = this._currentPosition[square]; const isDragSource = square === this._dragState?.source; const animation = this._animations.get(square); const highlight = isDragSource || this._highlightedSquares.has(square) ? 'highlight' : ''; const pieceStyles = this._getAnimationStyles(piece, animation); if (!piece && animation?.type === 'clear') { // Preserve the piece until the animation is complete piece = animation.piece; } squares.push(html ` <div class=\"square\" id=${squareId(square)} data-square=${square} part=\"square ${square} ${squareColor} ${highlight}\" @mousedown=${this._mousedownSquare} @mouseenter=${this._mouseenterSquare} @mouseleave=${this._mouseleaveSquare} @touchstart=${this._mousedownSquare} > ${this.showNotation && row === 7 ? html `<div part=\"notation alpha\">${file}</div>` : nothing} ${this.showNotation && col === 0 ? html `<div part=\"notation numeric\">${rank}</div>` : nothing} ${this._renderPiece(piece, pieceStyles, isDragSource)} </div> `); } } const styles = { width: this._squareSize * 8 + 'px', height: this._squareSize * 8 + 'px', }; return html `<div part=\"board\" style=${styleMap(styles)}>${squares}</div>`; } _renderPiece(piece, styles, isDragSource, id, part) { if (piece === undefined) { return nothing; } const style = { opacity: '1', transitionProperty: '', transitionDuration: '0ms', ...styles, }; if (isDragSource || piece === '') { style.display = 'none'; } if (piece === '') { return nothing; } if (!isFunction(this.renderPiece)) { this._error(8272, 'invalid renderPiece.'); } return html ` <div id=${ifDefined(id)} part=\"piece ${part ?? ''}\" piece=${piece} style=${styleMap(style)} ...=${renderPieceDirective(piece, this.renderPiece)} ></div> `; } _getAnimationStyles(piece, animation) { if (animation) { if (piece && (animation.type === 'move-start' || (animation.type === 'add-start' && this.draggablePieces))) { // Position the moved piece absolutely at the source const srcSquare = animation.type === 'move-start' ? this._getSquareElement(animation.source) : this._getSparePieceElement(piece); const destSquare = animation.type === 'move-start' ? this._getSquareElement(animation.destination) : this._getSquareElement(animation.square); const srcSquareRect = srcSquare.getBoundingClientRect(); const destSquareRect = destSquare.getBoundingClientRect(); return { position: 'absolute', left: `${srcSquareRect.left - destSquareRect.left}px`, top: `${srcSquareRect.top - destSquareRect.top}px`, width: `${this._squareSize}px`, height: `${this._squareSize}px`, }; } if (piece && (animation.type === 'move' || (animation.type === 'add' && this.draggablePieces))) { // Transition the moved piece to the destination return { position: 'absolute', transitionProperty: 'top, left', transitionDuration: `${speedToMS(this.moveSpeed)}ms`, top: `0`, left: `0`, width: `${this._squareSize}px`, height: `${this._squareSize}px`, }; } if (!piece && animation.type === 'clear') { // Preserve and transition a removed piece to opacity 0 piece = animation.piece; return { transitionProperty: 'opacity', transitionDuration: `${speedToMS(this.trashSpeed)}ms`, opacity: '0', }; } if (piece && animation.type === 'add-start') { // Initialize an added piece to opacity 0 return { opacity: '0', }; } if (piece && animation.type === 'add') { // Transition an added piece to opacity 1 return { transitionProperty: 'opacity', transitionDuration: `${speedToMS(this.appearSpeed)}ms`, }; } } return {}; } // ------------------------------------------------------------------------- // Event Listeners // ------------------------------------------------------------------------- _mousedownSquare(e) { // do nothing if we're not draggable. sparePieces implies draggable if (!this.draggablePieces && !this.sparePieces) { return; } // do nothing if there is no piece on this square const squareEl = e.currentTarget; const square = squareEl.getAttribute('data-square'); if (square === null || !this._currentPosition.hasOwnProperty(square)) { return; } e.preventDefault(); const pos = e instanceof MouseEvent ? e : e.changedTouches[0]; this._beginDraggingPiece(square, this._currentPosition[square], pos.clientX, pos.clientY); } _mousedownSparePiece(e) { // do nothing if sparePieces is not enabled if (!this.sparePieces) { return; } const sparePieceContainerEl = e.currentTarget; const pieceEl = sparePieceContainerEl.querySelector('[part~=piece]'); const piece = pieceEl.getAttribute('piece'); e.preventDefault(); const pos = e instanceof MouseEvent ? e : e.changedTouches[0]; this._beginDraggingPiece('spare', piece, pos.clientX, pos.clientY); } _mouseenterSquare(e) { // do not fire this event if we are dragging a piece // NOTE: this should never happen, but it's a safeguard if (this._dragState !== undefined) { return; } // get the square const square = e.currentTarget.getAttribute('data-square'); // NOTE: this should never happen; defensive if (!validSquare(square)) { return; } // Get the piece on this square const piece = this._currentPosition.hasOwnProperty(square) && this._currentPosition[square]; this.dispatchEvent(new CustomEvent('mouseover-square', { bubbles: true, detail: { square, piece, position: deepCopy(this._currentPosition), orientation: this.orientation, }, })); } _mouseleaveSquare(e) { // Do not fire this event if we are dragging a piece // NOTE: this should never happen, but it's a safeguard if (this._dragState !== undefined) { return; } const square = e.currentTarget.getAttribute('data-square'); // NOTE: this should never happen; defensive if (!validSquare(square)) { return; } // Get the piece on this square const piece = this._currentPosition.hasOwnProperty(square) && this._currentPosition[square]; // execute their function this.dispatchEvent(new CustomEvent('mouseout-square', { bubbles: true, detail: { square, piece, position: deepCopy(this._currentPosition), orientation: this.orientation, }, })); } _mousemoveWindow(e) { // Do nothing if we are not dragging a piece if (!(this._dragState?.state === 'dragging')) { return; } // Prevent screen from scrolling e.preventDefault(); const pos = e instanceof MouseEvent ? e : e.changedTouches[0]; this._updateDraggedPiece(pos.clientX, pos.clientY); } _mouseupWindow(e) { // Do nothing if we are not dragging a piece if (!(this._dragState?.state === 'dragging')) { return; } const pos = e instanceof MouseEvent ? e : e.changedTouches[0]; const location = this._isXYOnSquare(pos.clientX, pos.clientY); this._stopDraggedPiece(location); } // ------------------------------------------------------------------------- // Public Methods // ------------------------------------------------------------------------- /** * Sets the position of the board. * * @param useAnimation If `true`, animate to the new position. If `false`, * show the new position instantly. */ setPosition(position, useAnimation = true) { position = normalizePozition(position); // validate position object if (!validPositionObject(position)) { throw this._error(6482, 'Invalid value passed to the position method.', position); } if (useAnimation) { // start the animations const animations = this._calculateAnimations(this._currentPosition, position); this._doAnimations(animations, this._currentPosition, position); } this._setCurrentPosition(position); this.requestUpdate(); } /** * Sets the board to the start position. * * @param useAnimation If `true`, animate to the new position. If `false`, * show the new position instantly. */ start(useAnimation) { this.setPosition('start', useAnimation); } /** * Removes all the pieces on the board. If `useAnimation` is `false`, removes * pieces instantly. * * This is shorthand for `setPosition({})`. * * @param useAnimation If `true`, animate to the new position. If `false`, * show the new position instantly. */ clear(useAnimation) { this.setPosition({}, useAnimation); } /** * Executes one or more moves on the board. * * Moves are strings the form of \"e2-e4\", \"f6-d5\", etc., Pass `false` as an * argument to disable animation. */ move(...args) { let useAnimation = true; // collect the moves into an object const moves = {}; for (const arg of args) { // any \"false\" to this function means no animations if (arg === false) { useAnimation = false; continue; } // skip invalid arguments if (!validMove(arg)) { this._error(2826, 'Invalid move passed to the move method.', arg); continue; } const [from, to] = arg.split('-'); moves[from] = to; } // calculate position from moves const newPos = calculatePositionFromMoves(this._currentPosition, moves); // update the board this.setPosition(newPos, useAnimation); // return the new position object return newPos; } /** * Flip the orientation. */ flip() { this.orientation = this.orientation === 'white' ? 'black' : 'white'; } /** * Recalculates board and square sizes based on the parent element and redraws * the board accordingly. */ resize() { this.requestUpdate(); } // ------------------------------------------------------------------------- // Lifecycle Callbacks // ------------------------------------------------------------------------- firstUpdated() { // We need to re-render to read the size of the container this.requestUpdate(); if (window.ResizeObserver !== undefined) { new ResizeObserver(() => { this.resize(); }).observe(this); } } connectedCallback() { super.connectedCallback(); window.addEventListener('mousemove', this._mousemoveWindow); window.addEventListener('mouseup', this._mouseupWindow); window.addEventListener('touchmove', this._mousemoveWindow, { passive: false, }); window.addEventListener('touchend', this._mouseupWindow, { passive: false, }); } disconnectedCallback() { super.disconnectedCallback(); window.removeEventListener('mousemove', this._mousemoveWindow); window.removeEventListener('mouseup', this._mouseupWindow); window.removeEventListener('touchmove', this._mousemoveWindow); window.removeEventListener('touchend', this._mouseupWindow); } // ------------------------------------------------------------------------- // Control Flow // ------------------------------------------------------------------------- _setCurrentPosition(position) { const oldPos = deepCopy(this._currentPosition); const newPos = deepCopy(position); const oldFen = objToFen(oldPos); const newFen = objToFen(newPos); // do nothing if no change in position if (oldFen === newFen) return; // Fire change event this.dispatchEvent(new CustomEvent('change', { bubbles: true, detail: { oldPosition: oldPos, newPosition: newPos, }, })); // update state this._currentPosition = position; } _isXYOnSquare(x, y) { // TODO: remove cast when TypeScript fixes ShadowRoot.elementsFromPoint const elements = this .shadowRoot.elementsFromPoint(x, y); const squareEl = elements.find((e) => e.classList.contains('square')); const square = squareEl === undefined ? 'offboard' : squareEl.getAttribute('data-square'); return square; } _highlightSquare(square, value = true) { if (value) { this._highlightedSquares.add(square); } else { this._highlightedSquares.delete(square); } this.requestUpdate('_highlightedSquares'); } async _snapbackDraggedPiece() { assertIsDragging(this._dragState); const { source, piece } = this._dragState; // there is no \"snapback\" for spare pieces if (source === 'spare') { return this._trashDraggedPiece(); } this._dragState = { state: 'snapback', piece, source, }; // Wait for a paint this.requestUpdate(); await new Promise((resolve) => setTimeout(resolve, 0)); return new Promise((resolve) => { const transitionComplete = () => { this._draggedPieceElement.removeEventListener('transitionend', transitionComplete); resolve(); this.dispatchEvent(new CustomEvent('snapback-end', { bubbles: true, detail: { piece, square: source, position: deepCopy(this._currentPosition), orientation: this.orientation, }, })); }; this._draggedPieceElement.addEventListener('transitionend', transitionComplete); }); } async _trashDraggedPiece() { assertIsDragging(this._dragState); const { source, piece } = this._dragState; // remove the source piece const newPosition = deepCopy(this._currentPosition); delete newPosition[source]; this._setCurrentPosition(newPosition); this._dragState = { state: 'trash', piece, x: this._dragState.x, y: this._dragState.y, source: this._dragState.source, }; // Wait for a paint this.requestUpdate(); await new Promise((resolve) => setTimeout(resolve, 0)); return new Promise((resolve) => { const transitionComplete = () => { this._draggedPieceElement.removeEventListener('transitionend', transitionComplete); resolve(); }; this._draggedPieceElement.addEventListener('transitionend', transitionComplete); }); } async _dropDraggedPieceOnSquare(square) { assertIsDragging(this._dragState); const { source, piece } = this._dragState; // update position const newPosition = deepCopy(this._currentPosition); delete newPosition[source]; newPosition[square] = piece; this._setCurrentPosition(newPosition); this._dragState = { state: 'snap', piece, location: square, source: square, }; // Wait for a paint this.requestUpdate(); await new Promise((resolve) => setTimeout(resolve, 0)); return new Promise((resolve) => { const transitionComplete = () => { this._draggedPieceElement.removeEventListener('transitionend', transitionComplete); resolve(); // Fire the snap-end event this.dispatchEvent(new CustomEvent('snap-end', { bubbles: true, detail: { source, square, piece, }, })); }; this._draggedPieceElement.addEventListener('transitionend', transitionComplete); }); } _beginDraggingPiece(source, piece, x, y) { // Fire cancalable drag-start event const event = new CustomEvent('drag-start', { bubbles: true, cancelable: true, detail: { source, piece, position: deepCopy(this._currentPosition), orientation: this.orientation, }, }); this.dispatchEvent(event); if (event.defaultPrevented) { return; } // set state this._dragState = { state: 'dragging', x, y, piece, // if the piece came from spare pieces, location is offboard location: source === 'spare' ? 'offboard' : source, source, }; this.requestUpdate(); } _updateDraggedPiece(x, y) { assertIsDragging(this._dragState); // put the dragged piece over the mouse cursor this._dragState.x = x; this._dragState.y = y; this.requestUpdate(); const location = this._isXYOnSquare(x, y); // do nothing more if the location has not changed if (location === this._dragState.location) { return; } // remove highlight from previous square if (validSquare(this._dragState.location)) { this._highlightSquare(this._dragState.location, false); } // add highlight to new square if (validSquare(location)) { this._highlightSquare(location); } this.dispatchEvent(new CustomEvent('drag-move', { bubbles: true, detail: { newLocation: location, oldLocation: this._dragState.location, source: this._dragState.source, piece: this._dragState.piece, position: deepCopy(this._currentPosition), orientation: this.orientation, }, })); // update state this._dragState.location = location; } async _stopDraggedPiece(location) { assertIsDragging(this._dragState); const { source, piece } = this._dragState; // determine what the action should be let action = 'drop'; if (location === 'offboard') { action = this.dropOffBoard === 'trash' ? 'trash' : 'snapback'; } const newPosition = deepCopy(this._currentPosition); const oldPosition = deepCopy(this._currentPosition); // source piece is a spare piece and position is on the board if (source === 'spare' && validSquare(location)) { // add the piece to the board newPosition[location] = piece; } // source piece was on the board if (validSquare(source)) { // remove the piece from the board delete newPosition[source]; // new position is on the board if (validSquare(location)) { // move the piece newPosition[location] = piece; } } // Fire the drop event // Listeners can potentially change the drop action const dropEvent = new CustomEvent('drop', { bubbles: true, detail: { source, target: location, piece, newPosition, oldPosition, orientation: this.orientation, setAction(a) { action = a; }, }, }); this.dispatchEvent(dropEvent); this._highlightedSquares.clear(); // do it! if (action === 'snapback') { await this._snapbackDraggedPiece(); } else if (action === 'trash') { await this._trashDraggedPiece(); } else if (action === 'drop') { await this._dropDraggedPieceOnSquare(location); } // clear state this._dragState = undefined; // Render the final non-dragging state this.requestUpdate(); } // ------------------------------------------------------------------------- // Animations // ------------------------------------------------------------------------- // calculate an array of animations that need to happen in order to get // from pos1 to pos2 _calculateAnimations(pos1, pos2) { // make copies of both pos1 = deepCopy(pos1); pos2 = deepCopy(pos2); const animations = []; const squaresMovedTo = {}; // remove pieces that are the same in both positions for (const i in pos2) { if (!pos2.hasOwnProperty(i)) continue; if (pos1.hasOwnProperty(i) && pos1[i] === pos2[i]) { delete pos1[i]; delete pos2[i]; } } // find all the \"move\" animations for (const i in pos2) { if (!pos2.hasOwnProperty(i)) continue; const closestPiece = findClosestPiece(pos1, pos2[i], i); if (closestPiece) { animations.push({ type: 'move', source: closestPiece, destination: i, piece: pos2[i], }); delete pos1[closestPiece]; delete pos2[i]; squaresMovedTo[i] = true; } } // \"add\" animations for (const i in pos2) { if (!pos2.hasOwnProperty(i)) { continue; } animations.push({ type: 'add', square: i, piece: pos2[i], }); delete pos2[i]; } // \"clear\" animations for (const i in pos1) { if (!pos1.hasOwnProperty(i)) continue; // do not clear a piece if it is on a square that is the result // of a \"move\", ie: a piece capture if (squaresMovedTo.hasOwnProperty(i)) continue; animations.push({ type: 'clear', square: i, piece: pos1[i], }); delete pos1[i]; } return animations; } // execute an array of animations async _doAnimations(animations, oldPos, newPos) { if (animations.length === 0) { return; } let numFinished = 0; const transitionEndListener = () => { numFinished++; if (numFinished === animations.length) { this.shadowRoot.removeEventListener('transitionend', transitionEndListener); this._animations.clear(); this.requestUpdate(); this.dispatchEvent(new CustomEvent('move-end', { bubbles: true, detail: { oldPosition: deepCopy(oldPos), newPosition: deepCopy(newPos), }, })); } }; this.shadowRoot.addEventListener('transitionend', transitionEndListener); // Render once with added pieces at opacity 0 this._animations.clear(); for (const animation of animations) { if (animation.type === 'add' || animation.type === 'add-start') { this._animations.set(animation.square, { ...animation, type: 'add-start', }); } else if (animation.type === 'move' || animation.type === 'move-start') { this._animations.set(animation.destination, { ...animation, type: 'move-start', }); } else { this._animations.set(animation.square, animation); } } // Wait for a paint this.requestUpdate(); await new Promise((resolve) => setTimeout(resolve, 0)); // Render again with the piece at opacity 1 with a transition this._animations.clear(); for (const animation of animations) { if (animation.type === 'move' || animation.type === 'move-start') { this._animations.set(animation.destination, animation); } else { this._animations.set(animation.square, animation); } } this.requestUpdate(); } // ------------------------------------------------------------------------- // Validation / Errors // ------------------------------------------------------------------------- _error(code, msg, _obj) { const errorText = `Chessboard Error ${code} : ${msg}`; this.dispatchEvent(new ErrorEvent('error', { message: errorText, })); return new Error(errorText); } }",
+          "description": "A custom element that renders an interactive chess board."
+        }
+      ],
+      "exports": [
+        {
+          "kind": "js",
+          "name": "renderWikipediaSVGPiece",
+          "declaration": {
+            "name": "renderPiece",
+            "module": "#utils"
+          }
+        },
+        {
+          "kind": "js",
+          "name": "ChessBoardElement",
+          "declaration": {
+            "name": "ChessBoardElement",
+            "module": "dist/chessboard-element.js"
+          }
+        }
+      ]
+    },
+    {
+      "kind": "javascript-module",
+      "path": "dist/chessboard.js",
+      "declarations": [
+        {
+          "kind": "variable",
+          "name": "ChessBoard",
+          "default": "class ChessBoard extends LitElement { constructor() { super(...arguments); /** * Whether to show the board notation. */ this.hideNotation = false; /** * The orientation of the board. `'white'` for the white player at the bottom, * `'black'` for the black player at the bottom. */ this.orientation = 'white'; /** * If `true`, pieces on the board are draggable to other squares. */ this.draggablePieces = false; /** * If `'snapback'`, pieces dropped off the board will return to their original * square. If `'trash'`, pieces dropped off the board will be removed from the * board. * * This property has no effect when `draggable` is `false`. */ this.dropOffBoard = 'snapback'; /** * A function that renders DOM for a piece to a container element. This * function can render any elements and text, including SVG. * * The default value renders an SVG image of the piece, unless the * `pieceTheme` property is set, then it uses `pieceTheme` to get the URL for * an `<img>` element. * * @default Function */ this.renderPiece = (piece, container) => { let pieceImage = undefined; if (isString(this.pieceTheme)) { pieceImage = interpolateTemplate(this.pieceTheme, { piece: piece }); } else if (isFunction(this.pieceTheme)) { pieceImage = this.pieceTheme(piece); } if (pieceImage === undefined) { renderWikipediaSVGPiece(piece, container); } else { render(html `<img class=\"piece-image\" src=${pieceImage} />`, container); } }; /** * Animation speed for when pieces move between squares or from spare pieces * to the board. */ this.moveSpeed = DEFAULT_MOVE_SPEED; /** * Animation speed for when pieces that were dropped outside the board return * to their original square. */ this.snapbackSpeed = DEFAULT_SNAPBACK_SPEED; /** * Animation speed for when pieces \\\"snap\\\" to a square when dropped. */ this.snapSpeed = DEFAULT_SNAP_SPEED; /** * Animation speed for when pieces are removed. */ this.trashSpeed = DEFAULT_TRASH_SPEED; /** * Animation speed for when pieces appear on a square. * * Note that the \"appear\" animation only occurs when `sparePieces` is `false`. */ this.appearSpeed = DEFAULT_APPEAR_SPEED; /** * If `true`, the board will have spare pieces that can be dropped onto the * board. If `sparePieces` is set to `true`, `draggablePieces` gets set to * `true` as well. */ this.sparePieces = false; this._highlightedSquares = new Set(); this._animations = new Map(); this._currentPosition = {}; } static { this.styles = styles; } /** * The current position as a FEN string. */ get fen() { return objToFen(this._currentPosition); } /** * The current position of the board, as a `PositionObject`. This property may * be set externally, but only to valid `PositionObject`s. The value is copied * before being applied to the board. Changes to the position object are not * reflected in th rendering. * * To set the position using FEN, or a keyword like `'start'`, or to use * animations, use the `setPosition` method. */ get position() { return this._currentPosition; } set position(v) { const oldValue = this._currentPosition; this._setCurrentPosition(v); this.requestUpdate('position', oldValue); } /** * Whether to show the board notation. This is always the inverse of * `hideNotation`, which reflects the `hide-notation` attribute. * * @default true */ get showNotation() { return !this.hideNotation; } set showNotation(v) { this.hideNotation = !v; } get _squareSize() { // Note: this isn't cached, but is called during user interactions, so we // have a bit of time to use under RAIL guidelines. return this.offsetWidth / 8; } _getSquareElement(square) { return this.shadowRoot.getElementById(squareId(square)); } _getSparePieceElement(piece) { return this.shadowRoot.getElementById(sparePieceId(piece)); } // ------------------------------------------------------------------------- // DOM Building // ------------------------------------------------------------------------- render() { return html ` <div part=\"spare-pieces\"> ${this._renderSparePieces(this.orientation === 'white' ? 'black' : 'white')} </div> ${this._renderBoard()} <div part=\"spare-pieces\"> ${this._renderSparePieces(this.orientation === 'white' ? 'white' : 'black')} </div> <div id=\"dragged-pieces\" part=\"dragged-pieces\" style=${styleMap({ width: `0px`, height: `0px`, overflow: `visible`, })} > ${this._renderDraggedPiece()} </div> `; } _renderSparePieces(color) { if (!this.sparePieces) { return nothing; } const pieces = color === 'black' ? blackPieces : whitePieces; // The empty <div>s below are placeholders to get the shelf to line up with // the board's grid. Another option would be to try to use the same grid, // either with a single container, or subgrid/display:contents when those // are available. return html ` <div></div> ${pieces.map((p) => html ` <div id=\"spare-${p}\" @mousedown=${this._mousedownSparePiece} @touchstart=${this._mousedownSparePiece} > ${this._renderPiece(p, {}, false, sparePieceId(p))} </div> `)} <div></div> `; } _renderDraggedPiece() { const styles = { height: `${this._squareSize}px`, width: `${this._squareSize}px`, }; const dragState = this._dragState; if (dragState !== undefined) { styles.display = 'block'; const rect = this.getBoundingClientRect(); if (dragState.state === 'dragging') { const { x, y } = dragState; Object.assign(styles, { top: `${y - rect.top - this._squareSize / 2}px`, left: `${x - rect.left - this._squareSize / 2}px`, }); } else if (dragState.state === 'snapback') { const { source } = dragState; const square = this._getSquareElement(source); const squareRect = square.getBoundingClientRect(); Object.assign(styles, { transitionProperty: 'top, left', transitionDuration: `${speedToMS(this.snapbackSpeed)}ms`, top: `${squareRect.top - rect.top}px`, left: `${squareRect.left - rect.left}px`, }); } else if (dragState.state === 'trash') { const { x, y } = dragState; Object.assign(styles, { transitionProperty: 'opacity', transitionDuration: `${speedToMS(this.trashSpeed)}ms`, opacity: '0', top: `${y - rect.top - this._squareSize / 2}px`, left: `${x - rect.left - this._squareSize / 2}px`, }); } else if (dragState.state === 'snap') { const square = this._getSquareElement(dragState.location); const squareRect = square.getBoundingClientRect(); Object.assign(styles, { transitionProperty: 'top, left', transitionDuration: `${speedToMS(this.snapSpeed)}ms`, top: `${squareRect.top - rect.top}px`, left: `${squareRect.left - rect.left}px`, }); } } return this._renderPiece(this._dragState?.piece ?? '', styles, false, undefined, 'dragged-piece'); } _renderBoard() { const squares = []; const isFlipped = this.orientation === 'black'; for (let row = 0; row < 8; row++) { for (let col = 0; col < 8; col++) { const file = COLUMNS[isFlipped ? 7 - col : col]; const rank = isFlipped ? row + 1 : 8 - row; const square = `${file}${rank}`; const squareColor = getSquareColor(square); let piece = this._currentPosition[square]; const isDragSource = square === this._dragState?.source; const animation = this._animations.get(square); const highlight = isDragSource || this._highlightedSquares.has(square) ? 'highlight' : ''; const pieceStyles = this._getAnimationStyles(piece, animation); if (!piece && animation?.type === 'clear') { // Preserve the piece until the animation is complete piece = animation.piece; } squares.push(html ` <div class=\"square\" id=${squareId(square)} data-square=${square} part=\"square ${square} ${squareColor} ${highlight}\" @mousedown=${this._mousedownSquare} @mouseenter=${this._mouseenterSquare} @mouseleave=${this._mouseleaveSquare} @touchstart=${this._mousedownSquare} > ${this.showNotation && row === 7 ? html `<div part=\"notation alpha\">${file}</div>` : nothing} ${this.showNotation && col === 0 ? html `<div part=\"notation numeric\">${rank}</div>` : nothing} ${this._renderPiece(piece, pieceStyles, isDragSource)} </div> `); } } const styles = { width: this._squareSize * 8 + 'px', height: this._squareSize * 8 + 'px', }; return html `<div part=\"board\" style=${styleMap(styles)}>${squares}</div>`; } _renderPiece(piece, styles, isDragSource, id, part) { if (piece === undefined) { return nothing; } const style = { opacity: '1', transitionProperty: '', transitionDuration: '0ms', ...styles, }; if (isDragSource || piece === '') { style.display = 'none'; } if (piece === '') { return nothing; } if (!isFunction(this.renderPiece)) { this._error(8272, 'invalid renderPiece.'); } return html ` <div id=${ifDefined(id)} part=\"piece ${part ?? ''}\" piece=${piece} style=${styleMap(style)} ...=${renderPieceDirective(piece, this.renderPiece)} ></div> `; } _getAnimationStyles(piece, animation) { if (animation) { if (piece && (animation.type === 'move-start' || (animation.type === 'add-start' && this.draggablePieces))) { // BoardPosition the moved piece absolutely at the source const srcSquare = animation.type === 'move-start' ? this._getSquareElement(animation.source) : this._getSparePieceElement(piece); const destSquare = animation.type === 'move-start' ? this._getSquareElement(animation.destination) : this._getSquareElement(animation.square); const srcSquareRect = srcSquare.getBoundingClientRect(); const destSquareRect = destSquare.getBoundingClientRect(); return { position: 'absolute', left: `${srcSquareRect.left - destSquareRect.left}px`, top: `${srcSquareRect.top - destSquareRect.top}px`, width: `${this._squareSize}px`, height: `${this._squareSize}px`, }; } if (piece && (animation.type === 'move' || (animation.type === 'add' && this.draggablePieces))) { // Transition the moved piece to the destination return { position: 'absolute', transitionProperty: 'top, left', transitionDuration: `${speedToMS(this.moveSpeed)}ms`, top: `0`, left: `0`, width: `${this._squareSize}px`, height: `${this._squareSize}px`, }; } if (!piece && animation.type === 'clear') { // Preserve and transition a removed piece to opacity 0 piece = animation.piece; return { transitionProperty: 'opacity', transitionDuration: `${speedToMS(this.trashSpeed)}ms`, opacity: '0', }; } if (piece && animation.type === 'add-start') { // Initialize an added piece to opacity 0 return { opacity: '0', }; } if (piece && animation.type === 'add') { // Transition an added piece to opacity 1 return { transitionProperty: 'opacity', transitionDuration: `${speedToMS(this.appearSpeed)}ms`, }; } } return {}; } // ------------------------------------------------------------------------- // Event Listeners // ------------------------------------------------------------------------- _mousedownSquare(e) { // do nothing if we're not draggable. sparePieces implies draggable if (!this.draggablePieces && !this.sparePieces) { return; } // do nothing if there is no piece on this square const squareEl = e.currentTarget; const square = squareEl.getAttribute('data-square'); if (square === null || !this._currentPosition.hasOwnProperty(square)) { return; } e.preventDefault(); const pos = e instanceof MouseEvent ? e : e.changedTouches[0]; this._beginDraggingPiece(square, this._currentPosition[square], pos.clientX, pos.clientY); } _mousedownSparePiece(e) { // do nothing if sparePieces is not enabled if (!this.sparePieces) { return; } const sparePieceContainerEl = e.currentTarget; const pieceEl = sparePieceContainerEl.querySelector('[part~=piece]'); const piece = pieceEl.getAttribute('piece'); e.preventDefault(); const pos = e instanceof MouseEvent ? e : e.changedTouches[0]; this._beginDraggingPiece('spare', piece, pos.clientX, pos.clientY); } _mouseenterSquare(e) { // do not fire this event if we are dragging a piece // NOTE: this should never happen, but it's a safeguard if (this._dragState !== undefined) { return; } // get the square const square = e.currentTarget.getAttribute('data-square'); // NOTE: this should never happen; defensive if (!validSquare(square)) { return; } // Get the piece on this square const piece = this._currentPosition.hasOwnProperty(square) && this._currentPosition[square]; this.dispatchEvent(new CustomEvent('mouseover-square', { bubbles: true, detail: { square, piece, position: deepCopy(this._currentPosition), orientation: this.orientation, }, })); } _mouseleaveSquare(e) { // Do not fire this event if we are dragging a piece // NOTE: this should never happen, but it's a safeguard if (this._dragState !== undefined) { return; } const square = e.currentTarget.getAttribute('data-square'); // NOTE: this should never happen; defensive if (!validSquare(square)) { return; } // Get the piece on this square const piece = this._currentPosition.hasOwnProperty(square) && this._currentPosition[square]; // execute their function this.dispatchEvent(new CustomEvent('mouseout-square', { bubbles: true, detail: { square, piece, position: deepCopy(this._currentPosition), orientation: this.orientation, }, })); } _mousemoveWindow(e) { // Do nothing if we are not dragging a piece if (!(this._dragState?.state === 'dragging')) { return; } // Prevent screen from scrolling e.preventDefault(); const pos = e instanceof MouseEvent ? e : e.changedTouches[0]; this._updateDraggedPiece(pos.clientX, pos.clientY); } _mouseupWindow(e) { // Do nothing if we are not dragging a piece if (!(this._dragState?.state === 'dragging')) { return; } const pos = e instanceof MouseEvent ? e : e.changedTouches[0]; const location = this._isXYOnSquare(pos.clientX, pos.clientY); this._stopDraggedPiece(location); } // ------------------------------------------------------------------------- // Public Methods // ------------------------------------------------------------------------- /** * Sets the position of the board. * * @param useAnimation If `true`, animate to the new position. If `false`, * show the new position instantly. */ setPosition(position, useAnimation = true) { position = normalizePozition(position); // validate position object if (!validPositionObject(position)) { throw this._error(6482, 'Invalid value passed to the position method.', position); } if (useAnimation) { // start the animations const animations = this._calculateAnimations(this._currentPosition, position); this._doAnimations(animations, this._currentPosition, position); } this._setCurrentPosition(position); this.requestUpdate(); } /** * Sets the board to the start position. * * @param useAnimation If `true`, animate to the new position. If `false`, * show the new position instantly. */ start(useAnimation) { this.setPosition('start', useAnimation); } /** * Removes all the pieces on the board. If `useAnimation` is `false`, removes * pieces instantly. * * This is shorthand for `setPosition({})`. * * @param useAnimation If `true`, animate to the new position. If `false`, * show the new position instantly. */ clear(useAnimation) { this.setPosition({}, useAnimation); } /** * Executes one or more moves on the board. * * Moves are strings the form of \"e2-e4\", \"f6-d5\", etc., Pass `false` as an * argument to disable animation. */ move(...args) { let useAnimation = true; // collect the moves into an object const moves = {}; for (const arg of args) { // any \"false\" to this function means no animations if (arg === false) { useAnimation = false; continue; } // skip invalid arguments if (!validMove(arg)) { this._error(2826, 'Invalid move passed to the move method.', arg); continue; } const [from, to] = arg.split('-'); moves[from] = to; } // calculate position from moves const newPos = calculatePositionFromMoves(this._currentPosition, moves); // update the board this.setPosition(newPos, useAnimation); // return the new position object return newPos; } /** * Flip the orientation. */ flip() { this.orientation = this.orientation === 'white' ? 'black' : 'white'; } /** * Recalculates board and square sizes based on the parent element and redraws * the board accordingly. */ resize() { this.requestUpdate(); } // ------------------------------------------------------------------------- // Lifecycle Callbacks // ------------------------------------------------------------------------- firstUpdated() { // We need to re-render to read the size of the container this.requestUpdate(); if (window.ResizeObserver !== undefined) { new ResizeObserver(() => { this.resize(); }).observe(this); } } connectedCallback() { super.connectedCallback(); window.addEventListener('mousemove', this._mousemoveWindow); window.addEventListener('mouseup', this._mouseupWindow); window.addEventListener('touchmove', this._mousemoveWindow, { passive: false, }); window.addEventListener('touchend', this._mouseupWindow, { passive: false, }); } disconnectedCallback() { super.disconnectedCallback(); window.removeEventListener('mousemove', this._mousemoveWindow); window.removeEventListener('mouseup', this._mouseupWindow); window.removeEventListener('touchmove', this._mousemoveWindow); window.removeEventListener('touchend', this._mouseupWindow); } // ------------------------------------------------------------------------- // Control Flow // ------------------------------------------------------------------------- _setCurrentPosition(position) { const oldPos = deepCopy(this._currentPosition); const newPos = deepCopy(position); const oldFen = objToFen(oldPos); const newFen = objToFen(newPos); // do nothing if no change in position if (oldFen === newFen) return; // Fire change event this.dispatchEvent(new CustomEvent('change', { bubbles: true, detail: { oldPosition: oldPos, newPosition: newPos, }, })); // update state this._currentPosition = position; } _isXYOnSquare(x, y) { // TODO: remove cast when TypeScript fixes ShadowRoot.elementsFromPoint const elements = this .shadowRoot.elementsFromPoint(x, y); const squareEl = elements.find((e) => e.classList.contains('square')); const square = squareEl === undefined ? 'offboard' : squareEl.getAttribute('data-square'); return square; } _highlightSquare(square, value = true) { if (value) { this._highlightedSquares.add(square); } else { this._highlightedSquares.delete(square); } this.requestUpdate('_highlightedSquares'); } async _snapbackDraggedPiece() { assertIsDragging(this._dragState); const { source, piece } = this._dragState; // there is no \"snapback\" for spare pieces if (source === 'spare') { return this._trashDraggedPiece(); } this._dragState = { state: 'snapback', piece, source, }; // Wait for a paint this.requestUpdate(); await new Promise((resolve) => setTimeout(resolve, 0)); return new Promise((resolve) => { const transitionComplete = () => { this._draggedPieceElement.removeEventListener('transitionend', transitionComplete); resolve(); this.dispatchEvent(new CustomEvent('snapback-end', { bubbles: true, detail: { piece, square: source, position: deepCopy(this._currentPosition), orientation: this.orientation, }, })); }; this._draggedPieceElement.addEventListener('transitionend', transitionComplete); }); } async _trashDraggedPiece() { assertIsDragging(this._dragState); const { source, piece } = this._dragState; // remove the source piece const newPosition = deepCopy(this._currentPosition); delete newPosition[source]; this._setCurrentPosition(newPosition); this._dragState = { state: 'trash', piece, x: this._dragState.x, y: this._dragState.y, source: this._dragState.source, }; // Wait for a paint this.requestUpdate(); await new Promise((resolve) => setTimeout(resolve, 0)); return new Promise((resolve) => { const transitionComplete = () => { this._draggedPieceElement.removeEventListener('transitionend', transitionComplete); resolve(); }; this._draggedPieceElement.addEventListener('transitionend', transitionComplete); }); } async _dropDraggedPieceOnSquare(square) { assertIsDragging(this._dragState); const { source, piece } = this._dragState; // update position const newPosition = deepCopy(this._currentPosition); delete newPosition[source]; newPosition[square] = piece; this._setCurrentPosition(newPosition); this._dragState = { state: 'snap', piece, location: square, source: square, }; // Wait for a paint this.requestUpdate(); await new Promise((resolve) => setTimeout(resolve, 0)); return new Promise((resolve) => { const transitionComplete = () => { this._draggedPieceElement.removeEventListener('transitionend', transitionComplete); resolve(); // Fire the snap-end event this.dispatchEvent(new CustomEvent('snap-end', { bubbles: true, detail: { source, square, piece, }, })); }; this._draggedPieceElement.addEventListener('transitionend', transitionComplete); }); } _beginDraggingPiece(source, piece, x, y) { // Fire cancalable drag-start event const event = new CustomEvent('drag-start', { bubbles: true, cancelable: true, detail: { source, piece, position: deepCopy(this._currentPosition), orientation: this.orientation, }, }); this.dispatchEvent(event); if (event.defaultPrevented) { return; } // set state this._dragState = { state: 'dragging', x, y, piece, // if the piece came from spare pieces, location is offboard location: source === 'spare' ? 'offboard' : source, source, }; this.requestUpdate(); } _updateDraggedPiece(x, y) { assertIsDragging(this._dragState); // put the dragged piece over the mouse cursor this._dragState.x = x; this._dragState.y = y; this.requestUpdate(); const location = this._isXYOnSquare(x, y); // do nothing more if the location has not changed if (location === this._dragState.location) { return; } // remove highlight from previous square if (validSquare(this._dragState.location)) { this._highlightSquare(this._dragState.location, false); } // add highlight to new square if (validSquare(location)) { this._highlightSquare(location); } this.dispatchEvent(new CustomEvent('drag-move', { bubbles: true, detail: { newLocation: location, oldLocation: this._dragState.location, source: this._dragState.source, piece: this._dragState.piece, position: deepCopy(this._currentPosition), orientation: this.orientation, }, })); // update state this._dragState.location = location; } async _stopDraggedPiece(location) { assertIsDragging(this._dragState); const { source, piece } = this._dragState; // determine what the action should be let action = 'drop'; if (location === 'offboard') { action = this.dropOffBoard === 'trash' ? 'trash' : 'snapback'; } const newPosition = deepCopy(this._currentPosition); const oldPosition = deepCopy(this._currentPosition); // source piece is a spare piece and position is on the board if (source === 'spare' && validSquare(location)) { // add the piece to the board newPosition[location] = piece; } // source piece was on the board if (validSquare(source)) { // remove the piece from the board delete newPosition[source]; // new position is on the board if (validSquare(location)) { // move the piece newPosition[location] = piece; } } // Fire the drop event // Listeners can potentially change the drop action const dropEvent = new CustomEvent('drop', { bubbles: true, detail: { source, target: location, piece, newPosition, oldPosition, orientation: this.orientation, setAction(a) { action = a; }, }, }); this.dispatchEvent(dropEvent); this._highlightedSquares.clear(); // do it! if (action === 'snapback') { await this._snapbackDraggedPiece(); } else if (action === 'trash') { await this._trashDraggedPiece(); } else if (action === 'drop') { await this._dropDraggedPieceOnSquare(location); } // clear state this._dragState = undefined; // Render the final non-dragging state this.requestUpdate(); } // ------------------------------------------------------------------------- // Animations // ------------------------------------------------------------------------- // calculate an array of animations that need to happen in order to get // from pos1 to pos2 _calculateAnimations(pos1, pos2) { // make copies of both pos1 = deepCopy(pos1); pos2 = deepCopy(pos2); const animations = []; const squaresMovedTo = {}; // remove pieces that are the same in both positions for (const i in pos2) { if (!pos2.hasOwnProperty(i)) continue; if (pos1.hasOwnProperty(i) && pos1[i] === pos2[i]) { delete pos1[i]; delete pos2[i]; } } // find all the \"move\" animations for (const i in pos2) { if (!pos2.hasOwnProperty(i)) continue; const closestPiece = findClosestPiece(pos1, pos2[i], i); if (closestPiece) { animations.push({ type: 'move', source: closestPiece, destination: i, piece: pos2[i], }); delete pos1[closestPiece]; delete pos2[i]; squaresMovedTo[i] = true; } } // \"add\" animations for (const i in pos2) { if (!pos2.hasOwnProperty(i)) { continue; } animations.push({ type: 'add', square: i, piece: pos2[i], }); delete pos2[i]; } // \"clear\" animations for (const i in pos1) { if (!pos1.hasOwnProperty(i)) continue; // do not clear a piece if it is on a square that is the result // of a \"move\", ie: a piece capture if (squaresMovedTo.hasOwnProperty(i)) continue; animations.push({ type: 'clear', square: i, piece: pos1[i], }); delete pos1[i]; } return animations; } // execute an array of animations async _doAnimations(animations, oldPos, newPos) { if (animations.length === 0) { return; } let numFinished = 0; const transitionEndListener = () => { numFinished++; if (numFinished === animations.length) { this.shadowRoot.removeEventListener('transitionend', transitionEndListener); this._animations.clear(); this.requestUpdate(); this.dispatchEvent(new CustomEvent('move-end', { bubbles: true, detail: { oldPosition: deepCopy(oldPos), newPosition: deepCopy(newPos), }, })); } }; this.shadowRoot.addEventListener('transitionend', transitionEndListener); // Render once with added pieces at opacity 0 this._animations.clear(); for (const animation of animations) { if (animation.type === 'add' || animation.type === 'add-start') { this._animations.set(animation.square, { ...animation, type: 'add-start', }); } else if (animation.type === 'move' || animation.type === 'move-start') { this._animations.set(animation.destination, { ...animation, type: 'move-start', }); } else { this._animations.set(animation.square, animation); } } // Wait for a paint this.requestUpdate(); await new Promise((resolve) => setTimeout(resolve, 0)); // Render again with the piece at opacity 1 with a transition this._animations.clear(); for (const animation of animations) { if (animation.type === 'move' || animation.type === 'move-start') { this._animations.set(animation.destination, animation); } else { this._animations.set(animation.square, animation); } } this.requestUpdate(); } // ------------------------------------------------------------------------- // Validation / Errors // ------------------------------------------------------------------------- _error(code, msg, _obj) { const errorText = `Chessboard Error ${code} : ${msg}`; this.dispatchEvent(new ErrorEvent('error', { message: errorText, })); return new Error(errorText); } }",
+          "description": "A custom element that renders an interactive chess board."
+        }
+      ],
+      "exports": [
+        {
+          "kind": "js",
+          "name": "renderWikipediaSVGPiece",
+          "declaration": {
+            "name": "renderPiece",
+            "module": "#utils"
+          }
+        },
+        {
+          "kind": "js",
+          "name": "ChessBoard",
+          "declaration": {
+            "name": "ChessBoard",
+            "module": "dist/chessboard.js"
+          }
+        }
+      ]
+    },
+    {
+      "kind": "javascript-module",
+      "path": "dist/index.js",
+      "declarations": [],
+      "exports": [
+        {
+          "kind": "js",
+          "name": "ChessBoard",
+          "declaration": {
+            "name": "ChessBoard",
+            "module": "dist/index.js"
+          }
+        },
+        {
+          "kind": "js",
+          "name": "default",
+          "declaration": {
+            "name": "ChessBoard",
+            "module": "dist/index.js"
+          }
+        }
+      ]
+    },
+    {
+      "kind": "javascript-module",
+      "path": "dist/types.js",
+      "declarations": [
+        {
+          "kind": "variable",
+          "name": "ChessboardEvents",
+          "description": "Chessboard types."
+        }
+      ],
+      "exports": [
+        {
+          "kind": "js",
+          "name": "ChessboardEvents",
+          "declaration": {
+            "name": "ChessboardEvents",
+            "module": "dist/types.js"
+          }
+        }
+      ]
+    },
+    {
+      "kind": "javascript-module",
       "path": "src/chessboard.ts",
       "declarations": [
         {
@@ -146,7 +278,7 @@
               "type": {
                 "text": "BoardPositionObject"
               },
-              "description": "The current position of the board, as a `PositionObject`. This property may\nbe set externally, but only to valid `PositionObject`s. The value is copied\nbefore being applied to the board. Changes to the position object are not\nreflected in th rendering.\n\nTo set the position using FEN, or a keyword like `'start'`, or to use\nanimations, use the `setPosition` method."
+              "description": "The current position of the board, as a `PositionObject`. This property may be set externally, but only to valid\n`PositionObject`s. The value is copied before being applied to the board. Changes to the position object are not\nreflected in th rendering.\n\nTo set the position using FEN, or a keyword like `'start'`, or to use animations, use the `setPosition` method."
             },
             {
               "kind": "field",
@@ -160,8 +292,7 @@
             {
               "kind": "field",
               "name": "showNotation",
-              "description": "Whether to show the board notation. This is always the inverse of\n`hideNotation`, which reflects the `hide-notation` attribute.",
-              "default": "true"
+              "description": "Whether to show the board notation. This is always the inverse of `hideNotation`, which reflects the\n`hide-notation` attribute."
             },
             {
               "kind": "field",
@@ -224,7 +355,7 @@
                 "text": "OffBoardAction"
               },
               "default": "'snapback'",
-              "description": "If `'snapback'`, pieces dropped off the board will return to their original\nsquare. If `'trash'`, pieces dropped off the board will be removed from the\nboard.\n\nThis property has no effect when `draggable` is `false`."
+              "description": "If `'snapback'`, pieces dropped off the board will return to their original square. If `'trash'`, pieces dropped\noff the board will be removed from the board.\n\nThis property has no effect when `draggable` is `false`."
             },
             {
               "kind": "field",
@@ -233,7 +364,7 @@
                 "text": "AnimationSpeed"
               },
               "default": "200",
-              "description": "Animation speed for when pieces move between squares or from spare pieces\nto the board."
+              "description": "Animation speed for when pieces move between squares or from spare pieces to the board."
             },
             {
               "kind": "field",
@@ -242,7 +373,7 @@
                 "text": "SquareColor"
               },
               "default": "'white'",
-              "description": "The orientation of the board. `'white'` for the white player at the bottom,\n`'black'` for the black player at the bottom."
+              "description": "The orientation of the board. `'white'` for the white player at the bottom, `'black'` for the black player at\nthe bottom."
             },
             {
               "kind": "field",
@@ -250,7 +381,7 @@
               "type": {
                 "text": "string | ((piece: ChessPiece) => string) | undefined"
               },
-              "description": "A template string or function used to determine the source of piece images,\nused by the default `renderPiece` function, which renders an `<img>`\nelement.\n\nIf `pieceTheme` is a string, the pattern {piece} will be replaced by the\npiece code. The result should be an an `<img>` source.\n\nIf `pieceTheme` is a function the first argument is the piece code. The\nfunction should return an `<img>` source."
+              "description": "A template string or function used to determine the source of piece images, used by the default `renderPiece`\nfunction, which renders an `<img>` element.\n\nIf `pieceTheme` is a string, the pattern {piece} will be replaced by the piece code. The result should be an\n`<img>` source.\n\nIf `pieceTheme` is a function the first argument is the piece code. The function should return an `<img>` source."
             },
             {
               "kind": "field",
@@ -258,7 +389,7 @@
               "type": {
                 "text": "RenderPieceFunction | undefined"
               },
-              "description": "A function that renders DOM for a piece to a container element. This\nfunction can render any elements and text, including SVG.\n\nThe default value renders an SVG image of the piece, unless the\n`pieceTheme` property is set, then it uses `pieceTheme` to get the URL for\nan `<img>` element.",
+              "description": "A function that renders DOM for a piece to a container element. This function can render any elements and text,\nincluding SVG.\n\nThe default value renders an SVG image of the piece, unless the `pieceTheme` property is set, then it uses\n`pieceTheme` to get the URL for an `<img>` element.",
               "default": "Function"
             },
             {
@@ -268,7 +399,7 @@
                 "text": "AnimationSpeed"
               },
               "default": "60",
-              "description": "Animation speed for when pieces that were dropped outside the board return\nto their original square."
+              "description": "Animation speed for when pieces that were dropped outside the board return to their original square."
             },
             {
               "kind": "field",
@@ -322,7 +453,7 @@
                 "text": "boolean"
               },
               "default": "false",
-              "description": "If `true`, the board will have spare pieces that can be dropped onto the\nboard. If `sparePieces` is set to `true`, `draggablePieces` gets set to\n`true` as well."
+              "description": "If `true`, the board will have spare pieces that can be dropped onto the board. If `sparePieces` is set to\n`true`, `draggablePieces` gets set to `true` as well."
             },
             {
               "kind": "field",
@@ -369,6 +500,16 @@
               "type": {
                 "text": "DragState | undefined"
               }
+            },
+            {
+              "kind": "field",
+              "name": "#isDragging",
+              "privacy": "private",
+              "type": {
+                "text": "boolean"
+              },
+              "description": "Is the current drag state \"dragging\".",
+              "readonly": true
             },
             {
               "kind": "field",
@@ -450,19 +591,23 @@
                   "name": "color",
                   "type": {
                     "text": "SquareColor"
-                  }
+                  },
+                  "description": "Color of the side with the spare pieces."
                 }
-              ]
+              ],
+              "description": "Render spare pieces of the given `color`. Pieces are rendered on an additional row instead of the player details."
             },
             {
               "kind": "method",
               "name": "#renderDraggedPiece",
-              "privacy": "private"
+              "privacy": "private",
+              "description": "Render the piece that is being dragged."
             },
             {
               "kind": "method",
               "name": "#renderBoard",
-              "privacy": "private"
+              "privacy": "private",
+              "description": "Render the chess board and pieces on the board."
             },
             {
               "kind": "method",
@@ -473,36 +618,42 @@
                   "name": "piece",
                   "type": {
                     "text": "ChessPiece | undefined"
-                  }
+                  },
+                  "description": "The piece to render."
                 },
                 {
                   "name": "styles",
                   "type": {
                     "text": "Partial<CSSStyleDeclaration>"
-                  }
+                  },
+                  "description": "Additional piece styles."
                 },
                 {
                   "name": "isDragSource",
                   "optional": true,
                   "type": {
                     "text": "boolean"
-                  }
+                  },
+                  "description": "Is this piece currently being dragged."
                 },
                 {
                   "name": "id",
                   "optional": true,
                   "type": {
                     "text": "string"
-                  }
+                  },
+                  "description": "Optional piece ID."
                 },
                 {
                   "name": "part",
                   "optional": true,
                   "type": {
                     "text": "string"
-                  }
+                  },
+                  "description": "Additional CSS parts."
                 }
-              ]
+              ],
+              "description": "Render the the given piece on the board."
             },
             {
               "kind": "method",
@@ -510,7 +661,7 @@
               "privacy": "private",
               "return": {
                 "type": {
-                  "text": "Partial<CSSStyleDeclaration>"
+                  "text": ""
                 }
               },
               "parameters": [
@@ -518,94 +669,365 @@
                   "name": "piece",
                   "type": {
                     "text": "ChessPiece | undefined"
-                  }
+                  },
+                  "description": "The chess piece."
                 },
                 {
                   "name": "animation",
                   "optional": true,
                   "type": {
                     "text": "Animation | undefined"
+                  },
+                  "description": "Possible animation."
+                }
+              ],
+              "description": "Get possible `animation` styles for the given `piece`."
+            },
+            {
+              "kind": "method",
+              "name": "#pointerdownSquare",
+              "privacy": "private",
+              "parameters": [
+                {
+                  "name": "e",
+                  "type": {
+                    "text": "PointerEvent | TouchEvent"
                   }
                 }
               ]
             },
             {
               "kind": "method",
-              "name": "#mousedownSquare",
+              "name": "#pointerdownSparePiece",
               "privacy": "private",
               "parameters": [
                 {
                   "name": "e",
                   "type": {
-                    "text": "MouseEvent | TouchEvent"
+                    "text": "PointerEvent | TouchEvent"
                   }
                 }
               ]
             },
             {
               "kind": "method",
-              "name": "#mousedownSparePiece",
+              "name": "#pointerenterSquare",
               "privacy": "private",
               "parameters": [
                 {
                   "name": "e",
                   "type": {
-                    "text": "MouseEvent | TouchEvent"
+                    "text": "PointerEvent"
                   }
                 }
               ]
             },
             {
               "kind": "method",
-              "name": "#mouseenterSquare",
+              "name": "#pointerleaveSquare",
               "privacy": "private",
               "parameters": [
                 {
                   "name": "e",
                   "type": {
-                    "text": "Event"
+                    "text": "PointerEvent"
                   }
                 }
               ]
             },
             {
               "kind": "method",
-              "name": "#mouseleaveSquare",
+              "name": "#pointermoveWindow",
               "privacy": "private",
               "parameters": [
                 {
                   "name": "e",
                   "type": {
-                    "text": "Event"
+                    "text": "PointerEvent | TouchEvent"
                   }
                 }
               ]
             },
             {
               "kind": "method",
-              "name": "#mousemoveWindow",
+              "name": "#pointerupWindow",
               "privacy": "private",
               "parameters": [
                 {
                   "name": "e",
                   "type": {
-                    "text": "MouseEvent | TouchEvent"
+                    "text": "PointerEvent | TouchEvent"
                   }
                 }
               ]
             },
             {
               "kind": "method",
-              "name": "#mouseupWindow",
+              "name": "#calculateAnimations",
+              "privacy": "private",
+              "return": {
+                "type": {
+                  "text": ""
+                }
+              },
+              "parameters": [
+                {
+                  "name": "pos1",
+                  "type": {
+                    "text": "BoardPositionObject"
+                  },
+                  "description": "First (starting) board position."
+                },
+                {
+                  "name": "pos2",
+                  "type": {
+                    "text": "BoardPositionObject"
+                  },
+                  "description": "Second (ending) board position."
+                }
+              ],
+              "description": "Calculate an array of animations that need to happen in order to get from `pos1` to `pos2`."
+            },
+            {
+              "kind": "method",
+              "name": "#doAnimations",
               "privacy": "private",
               "parameters": [
                 {
-                  "name": "e",
+                  "name": "animations",
                   "type": {
-                    "text": "MouseEvent | TouchEvent"
-                  }
+                    "text": "Animation[]"
+                  },
+                  "description": "Array of animations to perform."
+                },
+                {
+                  "name": "oldPos",
+                  "type": {
+                    "text": "BoardPositionObject"
+                  },
+                  "description": "The starting board position."
+                },
+                {
+                  "name": "newPos",
+                  "type": {
+                    "text": "BoardPositionObject"
+                  },
+                  "description": "The resulting board position."
                 }
-              ]
+              ],
+              "description": "Perform the given `animations` to change the state of the board."
+            },
+            {
+              "kind": "method",
+              "name": "#dropDraggedPieceOnSquare",
+              "privacy": "private",
+              "parameters": [
+                {
+                  "name": "square",
+                  "type": {
+                    "text": "BoardLocation"
+                  },
+                  "description": "The target square name."
+                }
+              ],
+              "description": "Place the currently dragged piece on the given `square`.",
+              "return": {
+                "type": {
+                  "text": ""
+                }
+              }
+            },
+            {
+              "kind": "method",
+              "name": "#error",
+              "privacy": "private",
+              "parameters": [
+                {
+                  "name": "code",
+                  "type": {
+                    "text": "number"
+                  },
+                  "description": "Error code."
+                },
+                {
+                  "name": "msg",
+                  "type": {
+                    "text": "string"
+                  },
+                  "description": "Error message."
+                },
+                {
+                  "name": "_obj",
+                  "optional": true,
+                  "type": {
+                    "text": "unknown"
+                  },
+                  "description": "Possible error object?"
+                }
+              ],
+              "description": "Create and dispatch a new error.",
+              "return": {
+                "type": {
+                  "text": ""
+                }
+              }
+            },
+            {
+              "kind": "method",
+              "name": "#highlightSquare",
+              "privacy": "private",
+              "parameters": [
+                {
+                  "name": "square",
+                  "type": {
+                    "text": "BoardSquare"
+                  },
+                  "description": "Square name."
+                },
+                {
+                  "name": "value",
+                  "default": "null as HighlightStyle | null",
+                  "description": "Optional highlight style."
+                }
+              ],
+              "description": "Highlight the given square."
+            },
+            {
+              "kind": "method",
+              "name": "#isXYOnSquare",
+              "privacy": "private",
+              "return": {
+                "type": {
+                  "text": ""
+                }
+              },
+              "parameters": [
+                {
+                  "name": "x",
+                  "type": {
+                    "text": "number"
+                  },
+                  "description": "Pointer x-position."
+                },
+                {
+                  "name": "y",
+                  "type": {
+                    "text": "number"
+                  },
+                  "description": "Pointer y-position."
+                }
+              ],
+              "description": "Check which square (or off the board) the given window x,y position is."
+            },
+            {
+              "kind": "method",
+              "name": "#setCurrentPosition",
+              "privacy": "private",
+              "parameters": [
+                {
+                  "name": "position",
+                  "type": {
+                    "text": "BoardPositionObject"
+                  },
+                  "description": "The position to set."
+                }
+              ],
+              "description": "Set the board to the given board `position`."
+            },
+            {
+              "kind": "method",
+              "name": "#snapbackDraggedPiece",
+              "privacy": "private",
+              "description": "Perform a 'snapback' action for the given piece, or trash it if it is a spare piece.",
+              "return": {
+                "type": {
+                  "text": ""
+                }
+              }
+            },
+            {
+              "kind": "method",
+              "name": "#startDraggingPiece",
+              "privacy": "private",
+              "parameters": [
+                {
+                  "name": "source",
+                  "type": {
+                    "text": "BoardLocation"
+                  },
+                  "description": "Source square of the dragged piece."
+                },
+                {
+                  "name": "piece",
+                  "type": {
+                    "text": "ChessPiece"
+                  },
+                  "description": "The dragged chess piece."
+                },
+                {
+                  "name": "x",
+                  "type": {
+                    "text": "number"
+                  },
+                  "description": "Window x-position of the pointer at start of the drag operation."
+                },
+                {
+                  "name": "y",
+                  "type": {
+                    "text": "number"
+                  },
+                  "description": "Window y-position of the pointer at start of the drag operation."
+                }
+              ],
+              "description": "Start dragging a chess `piece`."
+            },
+            {
+              "kind": "method",
+              "name": "#stopDraggingPiece",
+              "privacy": "private",
+              "parameters": [
+                {
+                  "name": "location",
+                  "type": {
+                    "text": "BoardLocation"
+                  },
+                  "description": "Board position where the operation stopped."
+                }
+              ],
+              "description": "Stop the piece drag operation."
+            },
+            {
+              "kind": "method",
+              "name": "#trashDraggedPiece",
+              "privacy": "private",
+              "description": "Trash (remove) the currently dragged piece.",
+              "return": {
+                "type": {
+                  "text": ""
+                }
+              }
+            },
+            {
+              "kind": "method",
+              "name": "#updateDraggedPiece",
+              "privacy": "private",
+              "parameters": [
+                {
+                  "name": "x",
+                  "type": {
+                    "text": "number"
+                  },
+                  "description": "Current window x-position of the pointer."
+                },
+                {
+                  "name": "y",
+                  "type": {
+                    "text": "number"
+                  },
+                  "description": "Current window y-position of the pointer."
+                }
+              ],
+              "description": "Update the position of a piece being dragged."
             },
             {
               "kind": "method",
@@ -620,7 +1042,7 @@
                 {
                   "name": "useAnimation",
                   "default": "true",
-                  "description": "If `true`, animate to the new position. If `false`,\nshow the new position instantly."
+                  "description": "If `true`, animate to the new position. If `false`, show the new position instantly."
                 }
               ],
               "description": "Sets the position of the board."
@@ -635,7 +1057,7 @@
                   "type": {
                     "text": "boolean"
                   },
-                  "description": "If `true`, animate to the new position. If `false`,\nshow the new position instantly."
+                  "description": "If `true`, animate to the new position. If `false`, show the new position instantly."
                 }
               ],
               "description": "Sets the board to the start position."
@@ -650,7 +1072,7 @@
                   "type": {
                     "text": "boolean"
                   },
-                  "description": "If `true`, animate to the new position. If `false`,\nshow the new position instantly."
+                  "description": "If `true`, animate to the new position. If `false`, show the new position instantly."
                 }
               ],
               "description": "Removes all the pieces on the board. If `useAnimation` is `false`, removes\npieces instantly.\n\nThis is shorthand for `setPosition({})`."
@@ -666,7 +1088,7 @@
                   }
                 }
               ],
-              "description": "Executes one or more moves on the board.\n\nMoves are strings the form of \"e2-e4\", \"f6-d5\", etc., Pass `false` as an\nargument to disable animation."
+              "description": "Executes one or more moves on the board.\n\nMoves are strings the form of \"e2-e4\", \"f6-d5\", etc., Pass `false` as an argument to disable animation."
             },
             {
               "kind": "method",
@@ -676,226 +1098,11 @@
             {
               "kind": "method",
               "name": "resize",
-              "description": "Recalculates board and square sizes based on the parent element and redraws\nthe board accordingly."
+              "description": "Recalculates board and square sizes based on the parent element and redraws the board accordingly."
             },
             {
               "kind": "method",
               "name": "firstUpdated"
-            },
-            {
-              "kind": "method",
-              "name": "#setCurrentPosition",
-              "privacy": "private",
-              "parameters": [
-                {
-                  "name": "position",
-                  "type": {
-                    "text": "BoardPositionObject"
-                  }
-                }
-              ]
-            },
-            {
-              "kind": "method",
-              "name": "#isXYOnSquare",
-              "privacy": "private",
-              "return": {
-                "type": {
-                  "text": "BoardLocation | 'offboard'"
-                }
-              },
-              "parameters": [
-                {
-                  "name": "x",
-                  "type": {
-                    "text": "number"
-                  }
-                },
-                {
-                  "name": "y",
-                  "type": {
-                    "text": "number"
-                  }
-                }
-              ]
-            },
-            {
-              "kind": "method",
-              "name": "#highlightSquare",
-              "privacy": "private",
-              "parameters": [
-                {
-                  "name": "square",
-                  "type": {
-                    "text": "BoardSquare"
-                  }
-                },
-                {
-                  "name": "value",
-                  "default": "null as HighlightStyle | null"
-                }
-              ]
-            },
-            {
-              "kind": "method",
-              "name": "#snapbackDraggedPiece",
-              "privacy": "private"
-            },
-            {
-              "kind": "method",
-              "name": "#trashDraggedPiece",
-              "privacy": "private"
-            },
-            {
-              "kind": "method",
-              "name": "#dropDraggedPieceOnSquare",
-              "privacy": "private",
-              "parameters": [
-                {
-                  "name": "square",
-                  "type": {
-                    "text": "BoardLocation"
-                  }
-                }
-              ]
-            },
-            {
-              "kind": "method",
-              "name": "#beginDraggingPiece",
-              "privacy": "private",
-              "parameters": [
-                {
-                  "name": "source",
-                  "type": {
-                    "text": "BoardLocation"
-                  }
-                },
-                {
-                  "name": "piece",
-                  "type": {
-                    "text": "ChessPiece"
-                  }
-                },
-                {
-                  "name": "x",
-                  "type": {
-                    "text": "number"
-                  }
-                },
-                {
-                  "name": "y",
-                  "type": {
-                    "text": "number"
-                  }
-                }
-              ]
-            },
-            {
-              "kind": "method",
-              "name": "#updateDraggedPiece",
-              "privacy": "private",
-              "parameters": [
-                {
-                  "name": "x",
-                  "type": {
-                    "text": "number"
-                  }
-                },
-                {
-                  "name": "y",
-                  "type": {
-                    "text": "number"
-                  }
-                }
-              ]
-            },
-            {
-              "kind": "method",
-              "name": "#stopDraggedPiece",
-              "privacy": "private",
-              "parameters": [
-                {
-                  "name": "location",
-                  "type": {
-                    "text": "BoardLocation"
-                  }
-                }
-              ]
-            },
-            {
-              "kind": "method",
-              "name": "#calculateAnimations",
-              "privacy": "private",
-              "return": {
-                "type": {
-                  "text": "Animation[]"
-                }
-              },
-              "parameters": [
-                {
-                  "name": "pos1",
-                  "type": {
-                    "text": "BoardPositionObject"
-                  }
-                },
-                {
-                  "name": "pos2",
-                  "type": {
-                    "text": "BoardPositionObject"
-                  }
-                }
-              ]
-            },
-            {
-              "kind": "method",
-              "name": "#doAnimations",
-              "privacy": "private",
-              "parameters": [
-                {
-                  "name": "animations",
-                  "type": {
-                    "text": "Animation[]"
-                  }
-                },
-                {
-                  "name": "oldPos",
-                  "type": {
-                    "text": "BoardPositionObject"
-                  }
-                },
-                {
-                  "name": "newPos",
-                  "type": {
-                    "text": "BoardPositionObject"
-                  }
-                }
-              ]
-            },
-            {
-              "kind": "method",
-              "name": "#error",
-              "privacy": "private",
-              "parameters": [
-                {
-                  "name": "code",
-                  "type": {
-                    "text": "number"
-                  }
-                },
-                {
-                  "name": "msg",
-                  "type": {
-                    "text": "string"
-                  }
-                },
-                {
-                  "name": "_obj",
-                  "optional": true,
-                  "type": {
-                    "text": "unknown"
-                  }
-                }
-              ]
             }
           ],
           "events": [
@@ -914,6 +1121,27 @@
               "description": "Fired when the cursor exits a square The event's `detail` object has the following properties: `square`: the square that was left `piece`: the piece on that square (or `false` if there is no piece) `position`: the current position `orientation`: the current orientation. Note that `mouseout-square` will *not* fire during piece drag and drop. Use `drag-move` instead."
             },
             {
+              "name": "move-end",
+              "type": {
+                "text": "CustomEvent"
+              },
+              "description": "Fired when a piece move completes The event's `detail` object has the following properties: * `oldPosition`: the old position * `newPosition`: the new position"
+            },
+            {
+              "name": "snap-end",
+              "type": {
+                "text": "CustomEvent"
+              },
+              "description": "Fired when a piece completes a snap animation The event's `detail` object has the following properties: * `source`: the source of the dragged piece * `square`: the target of the dragged piece * `piece`: the dragged piece"
+            },
+            {
+              "name": "error",
+              "type": {
+                "text": "ErrorEvent"
+              },
+              "description": "Fired in the case of invalid attributes."
+            },
+            {
               "name": "change",
               "type": {
                 "text": "CustomEvent"
@@ -928,32 +1156,11 @@
               "description": "Fired when the snapback animation is complete when pieces are dropped off the board. The event's `detail` object has the following properties: * `piece`: the dragged piece * `square`: the square the piece returned to * `position`: the current position * `orientation`: the current orientation."
             },
             {
-              "name": "snap-end",
-              "type": {
-                "text": "CustomEvent"
-              },
-              "description": "Fired when a piece completes a snap animation The event's `detail` object has the following properties: * `source`: the source of the dragged piece * `square`: the target of the dragged piece * `piece`: the dragged piece"
-            },
-            {
               "name": "drag-move",
               "type": {
                 "text": "CustomEvent"
               },
               "description": "Fired when a user-initiated drag moves The event's `detail` object has the following properties: * `newLocation`: the new location of the piece * `oldLocation`: the old location of the piece * `source`: the source of the dragged piece * `piece`: the piece * `position`: the current position on the board * `orientation`: the current orientation."
-            },
-            {
-              "name": "move-end",
-              "type": {
-                "text": "CustomEvent"
-              },
-              "description": "Fired when a piece move completes The event's `detail` object has the following properties: * `oldPosition`: the old position * `newPosition`: the new position"
-            },
-            {
-              "name": "error",
-              "type": {
-                "text": "ErrorEvent"
-              },
-              "description": "Fired in the case of invalid attributes."
             },
             {
               "description": "Fired when a piece is picked up The event's `detail` object has the following properties: * `source`: the source of the piece * `piece`: the piece * `position`: the current position on the board * `orientation`: the current orientation. The drag action is prevented if the listener calls `event.preventDefault()`.",
@@ -1013,104 +1220,455 @@
     },
     {
       "kind": "javascript-module",
-      "path": "dist/chessboard-element.js",
+      "path": "dist/utils/chessboard-styles.js",
       "declarations": [
         {
           "kind": "variable",
-          "name": "ChessBoardElement",
-          "default": "class ChessBoardElement extends LitElement { constructor() { super(...arguments); /** * Whether to show the board notation. */ this.hideNotation = false; /** * The orientation of the board. `'white'` for the white player at the bottom, * `'black'` for the black player at the bottom. */ this.orientation = 'white'; /** * If `true`, pieces on the board are draggable to other squares. */ this.draggablePieces = false; /** * If `'snapback'`, pieces dropped off the board will return to their original * square. If `'trash'`, pieces dropped off the board will be removed from the * board. * * This property has no effect when `draggable` is `false`. */ this.dropOffBoard = 'snapback'; /** * A function that renders DOM for a piece to a container element. This * function can render any elements and text, including SVG. * * The default value renders an SVG image of the piece, unless the * `pieceTheme` property is set, then it uses `pieceTheme` to get the URL for * an `<img>` element. * * @default Function */ this.renderPiece = (piece, container) => { let pieceImage = undefined; if (isString(this.pieceTheme)) { pieceImage = interpolateTemplate(this.pieceTheme, { piece: piece }); } else if (isFunction(this.pieceTheme)) { pieceImage = this.pieceTheme(piece); } if (pieceImage === undefined) { renderWikipediaSVGPiece(piece, container); } else { render(html `<img class=\"piece-image\" src=${pieceImage} />`, container); } }; /** * Animation speed for when pieces move between squares or from spare pieces * to the board. */ this.moveSpeed = DEFAULT_MOVE_SPEED; /** * Animation speed for when pieces that were dropped outside the board return * to their original square. */ this.snapbackSpeed = DEFAULT_SNAPBACK_SPEED; /** * Animation speed for when pieces \\\"snap\\\" to a square when dropped. */ this.snapSpeed = DEFAULT_SNAP_SPEED; /** * Animation speed for when pieces are removed. */ this.trashSpeed = DEFAULT_TRASH_SPEED; /** * Animation speed for when pieces appear on a square. * * Note that the \"appear\" animation only occurs when `sparePieces` is `false`. */ this.appearSpeed = DEFAULT_APPEAR_SPEED; /** * If `true`, the board will have spare pieces that can be dropped onto the * board. If `sparePieces` is set to `true`, `draggablePieces` gets set to * `true` as well. */ this.sparePieces = false; this._highlightedSquares = new Set(); this._animations = new Map(); this._currentPosition = {}; } static { this.styles = styles; } /** * The current position as a FEN string. */ get fen() { return objToFen(this._currentPosition); } /** * The current position of the board, as a `PositionObject`. This property may * be set externally, but only to valid `PositionObject`s. The value is copied * before being applied to the board. Changes to the position object are not * reflected in th rendering. * * To set the position using FEN, or a keyword like `'start'`, or to use * animations, use the `setPosition` method. */ get position() { return this._currentPosition; } set position(v) { const oldValue = this._currentPosition; this._setCurrentPosition(v); this.requestUpdate('position', oldValue); } /** * Whether to show the board notation. This is always the inverse of * `hideNotation`, which reflects the `hide-notation` attribute. * * @default true */ get showNotation() { return !this.hideNotation; } set showNotation(v) { this.hideNotation = !v; } get _squareSize() { // Note: this isn't cached, but is called during user interactions, so we // have a bit of time to use under RAIL guidelines. return this.offsetWidth / 8; } _getSquareElement(square) { return this.shadowRoot.getElementById(squareId(square)); } _getSparePieceElement(piece) { return this.shadowRoot.getElementById(sparePieceId(piece)); } // ------------------------------------------------------------------------- // DOM Building // ------------------------------------------------------------------------- render() { return html ` <div part=\"spare-pieces\"> ${this._renderSparePieces(this.orientation === 'white' ? 'black' : 'white')} </div> ${this._renderBoard()} <div part=\"spare-pieces\"> ${this._renderSparePieces(this.orientation === 'white' ? 'white' : 'black')} </div> <div id=\"dragged-pieces\" part=\"dragged-pieces\" style=${styleMap({ width: `0px`, height: `0px`, overflow: `visible`, })} > ${this._renderDraggedPiece()} </div> `; } _renderSparePieces(color) { if (!this.sparePieces) { return nothing; } const pieces = color === 'black' ? blackPieces : whitePieces; // The empty <div>s below are placeholders to get the shelf to line up with // the board's grid. Another option would be to try to use the same grid, // either with a single container, or subgrid/display:contents when those // are available. return html ` <div></div> ${pieces.map((p) => html ` <div id=\"spare-${p}\" @mousedown=${this._mousedownSparePiece} @touchstart=${this._mousedownSparePiece} > ${this._renderPiece(p, {}, false, sparePieceId(p))} </div> `)} <div></div> `; } _renderDraggedPiece() { const styles = { height: `${this._squareSize}px`, width: `${this._squareSize}px`, }; const dragState = this._dragState; if (dragState !== undefined) { styles.display = 'block'; const rect = this.getBoundingClientRect(); if (dragState.state === 'dragging') { const { x, y } = dragState; Object.assign(styles, { top: `${y - rect.top - this._squareSize / 2}px`, left: `${x - rect.left - this._squareSize / 2}px`, }); } else if (dragState.state === 'snapback') { const { source } = dragState; const square = this._getSquareElement(source); const squareRect = square.getBoundingClientRect(); Object.assign(styles, { transitionProperty: 'top, left', transitionDuration: `${speedToMS(this.snapbackSpeed)}ms`, top: `${squareRect.top - rect.top}px`, left: `${squareRect.left - rect.left}px`, }); } else if (dragState.state === 'trash') { const { x, y } = dragState; Object.assign(styles, { transitionProperty: 'opacity', transitionDuration: `${speedToMS(this.trashSpeed)}ms`, opacity: '0', top: `${y - rect.top - this._squareSize / 2}px`, left: `${x - rect.left - this._squareSize / 2}px`, }); } else if (dragState.state === 'snap') { const square = this._getSquareElement(dragState.location); const squareRect = square.getBoundingClientRect(); Object.assign(styles, { transitionProperty: 'top, left', transitionDuration: `${speedToMS(this.snapSpeed)}ms`, top: `${squareRect.top - rect.top}px`, left: `${squareRect.left - rect.left}px`, }); } } return this._renderPiece(this._dragState?.piece ?? '', styles, false, undefined, 'dragged-piece'); } _renderBoard() { const squares = []; const isFlipped = this.orientation === 'black'; for (let row = 0; row < 8; row++) { for (let col = 0; col < 8; col++) { const file = COLUMNS[isFlipped ? 7 - col : col]; const rank = isFlipped ? row + 1 : 8 - row; const square = `${file}${rank}`; const squareColor = getSquareColor(square); let piece = this._currentPosition[square]; const isDragSource = square === this._dragState?.source; const animation = this._animations.get(square); const highlight = isDragSource || this._highlightedSquares.has(square) ? 'highlight' : ''; const pieceStyles = this._getAnimationStyles(piece, animation); if (!piece && animation?.type === 'clear') { // Preserve the piece until the animation is complete piece = animation.piece; } squares.push(html ` <div class=\"square\" id=${squareId(square)} data-square=${square} part=\"square ${square} ${squareColor} ${highlight}\" @mousedown=${this._mousedownSquare} @mouseenter=${this._mouseenterSquare} @mouseleave=${this._mouseleaveSquare} @touchstart=${this._mousedownSquare} > ${this.showNotation && row === 7 ? html `<div part=\"notation alpha\">${file}</div>` : nothing} ${this.showNotation && col === 0 ? html `<div part=\"notation numeric\">${rank}</div>` : nothing} ${this._renderPiece(piece, pieceStyles, isDragSource)} </div> `); } } const styles = { width: this._squareSize * 8 + 'px', height: this._squareSize * 8 + 'px', }; return html `<div part=\"board\" style=${styleMap(styles)}>${squares}</div>`; } _renderPiece(piece, styles, isDragSource, id, part) { if (piece === undefined) { return nothing; } const style = { opacity: '1', transitionProperty: '', transitionDuration: '0ms', ...styles, }; if (isDragSource || piece === '') { style.display = 'none'; } if (piece === '') { return nothing; } if (!isFunction(this.renderPiece)) { this._error(8272, 'invalid renderPiece.'); } return html ` <div id=${ifDefined(id)} part=\"piece ${part ?? ''}\" piece=${piece} style=${styleMap(style)} ...=${renderPieceDirective(piece, this.renderPiece)} ></div> `; } _getAnimationStyles(piece, animation) { if (animation) { if (piece && (animation.type === 'move-start' || (animation.type === 'add-start' && this.draggablePieces))) { // Position the moved piece absolutely at the source const srcSquare = animation.type === 'move-start' ? this._getSquareElement(animation.source) : this._getSparePieceElement(piece); const destSquare = animation.type === 'move-start' ? this._getSquareElement(animation.destination) : this._getSquareElement(animation.square); const srcSquareRect = srcSquare.getBoundingClientRect(); const destSquareRect = destSquare.getBoundingClientRect(); return { position: 'absolute', left: `${srcSquareRect.left - destSquareRect.left}px`, top: `${srcSquareRect.top - destSquareRect.top}px`, width: `${this._squareSize}px`, height: `${this._squareSize}px`, }; } if (piece && (animation.type === 'move' || (animation.type === 'add' && this.draggablePieces))) { // Transition the moved piece to the destination return { position: 'absolute', transitionProperty: 'top, left', transitionDuration: `${speedToMS(this.moveSpeed)}ms`, top: `0`, left: `0`, width: `${this._squareSize}px`, height: `${this._squareSize}px`, }; } if (!piece && animation.type === 'clear') { // Preserve and transition a removed piece to opacity 0 piece = animation.piece; return { transitionProperty: 'opacity', transitionDuration: `${speedToMS(this.trashSpeed)}ms`, opacity: '0', }; } if (piece && animation.type === 'add-start') { // Initialize an added piece to opacity 0 return { opacity: '0', }; } if (piece && animation.type === 'add') { // Transition an added piece to opacity 1 return { transitionProperty: 'opacity', transitionDuration: `${speedToMS(this.appearSpeed)}ms`, }; } } return {}; } // ------------------------------------------------------------------------- // Event Listeners // ------------------------------------------------------------------------- _mousedownSquare(e) { // do nothing if we're not draggable. sparePieces implies draggable if (!this.draggablePieces && !this.sparePieces) { return; } // do nothing if there is no piece on this square const squareEl = e.currentTarget; const square = squareEl.getAttribute('data-square'); if (square === null || !this._currentPosition.hasOwnProperty(square)) { return; } e.preventDefault(); const pos = e instanceof MouseEvent ? e : e.changedTouches[0]; this._beginDraggingPiece(square, this._currentPosition[square], pos.clientX, pos.clientY); } _mousedownSparePiece(e) { // do nothing if sparePieces is not enabled if (!this.sparePieces) { return; } const sparePieceContainerEl = e.currentTarget; const pieceEl = sparePieceContainerEl.querySelector('[part~=piece]'); const piece = pieceEl.getAttribute('piece'); e.preventDefault(); const pos = e instanceof MouseEvent ? e : e.changedTouches[0]; this._beginDraggingPiece('spare', piece, pos.clientX, pos.clientY); } _mouseenterSquare(e) { // do not fire this event if we are dragging a piece // NOTE: this should never happen, but it's a safeguard if (this._dragState !== undefined) { return; } // get the square const square = e.currentTarget.getAttribute('data-square'); // NOTE: this should never happen; defensive if (!validSquare(square)) { return; } // Get the piece on this square const piece = this._currentPosition.hasOwnProperty(square) && this._currentPosition[square]; this.dispatchEvent(new CustomEvent('mouseover-square', { bubbles: true, detail: { square, piece, position: deepCopy(this._currentPosition), orientation: this.orientation, }, })); } _mouseleaveSquare(e) { // Do not fire this event if we are dragging a piece // NOTE: this should never happen, but it's a safeguard if (this._dragState !== undefined) { return; } const square = e.currentTarget.getAttribute('data-square'); // NOTE: this should never happen; defensive if (!validSquare(square)) { return; } // Get the piece on this square const piece = this._currentPosition.hasOwnProperty(square) && this._currentPosition[square]; // execute their function this.dispatchEvent(new CustomEvent('mouseout-square', { bubbles: true, detail: { square, piece, position: deepCopy(this._currentPosition), orientation: this.orientation, }, })); } _mousemoveWindow(e) { // Do nothing if we are not dragging a piece if (!(this._dragState?.state === 'dragging')) { return; } // Prevent screen from scrolling e.preventDefault(); const pos = e instanceof MouseEvent ? e : e.changedTouches[0]; this._updateDraggedPiece(pos.clientX, pos.clientY); } _mouseupWindow(e) { // Do nothing if we are not dragging a piece if (!(this._dragState?.state === 'dragging')) { return; } const pos = e instanceof MouseEvent ? e : e.changedTouches[0]; const location = this._isXYOnSquare(pos.clientX, pos.clientY); this._stopDraggedPiece(location); } // ------------------------------------------------------------------------- // Public Methods // ------------------------------------------------------------------------- /** * Sets the position of the board. * * @param useAnimation If `true`, animate to the new position. If `false`, * show the new position instantly. */ setPosition(position, useAnimation = true) { position = normalizePozition(position); // validate position object if (!validPositionObject(position)) { throw this._error(6482, 'Invalid value passed to the position method.', position); } if (useAnimation) { // start the animations const animations = this._calculateAnimations(this._currentPosition, position); this._doAnimations(animations, this._currentPosition, position); } this._setCurrentPosition(position); this.requestUpdate(); } /** * Sets the board to the start position. * * @param useAnimation If `true`, animate to the new position. If `false`, * show the new position instantly. */ start(useAnimation) { this.setPosition('start', useAnimation); } /** * Removes all the pieces on the board. If `useAnimation` is `false`, removes * pieces instantly. * * This is shorthand for `setPosition({})`. * * @param useAnimation If `true`, animate to the new position. If `false`, * show the new position instantly. */ clear(useAnimation) { this.setPosition({}, useAnimation); } /** * Executes one or more moves on the board. * * Moves are strings the form of \"e2-e4\", \"f6-d5\", etc., Pass `false` as an * argument to disable animation. */ move(...args) { let useAnimation = true; // collect the moves into an object const moves = {}; for (const arg of args) { // any \"false\" to this function means no animations if (arg === false) { useAnimation = false; continue; } // skip invalid arguments if (!validMove(arg)) { this._error(2826, 'Invalid move passed to the move method.', arg); continue; } const [from, to] = arg.split('-'); moves[from] = to; } // calculate position from moves const newPos = calculatePositionFromMoves(this._currentPosition, moves); // update the board this.setPosition(newPos, useAnimation); // return the new position object return newPos; } /** * Flip the orientation. */ flip() { this.orientation = this.orientation === 'white' ? 'black' : 'white'; } /** * Recalculates board and square sizes based on the parent element and redraws * the board accordingly. */ resize() { this.requestUpdate(); } // ------------------------------------------------------------------------- // Lifecycle Callbacks // ------------------------------------------------------------------------- firstUpdated() { // We need to re-render to read the size of the container this.requestUpdate(); if (window.ResizeObserver !== undefined) { new ResizeObserver(() => { this.resize(); }).observe(this); } } connectedCallback() { super.connectedCallback(); window.addEventListener('mousemove', this._mousemoveWindow); window.addEventListener('mouseup', this._mouseupWindow); window.addEventListener('touchmove', this._mousemoveWindow, { passive: false, }); window.addEventListener('touchend', this._mouseupWindow, { passive: false, }); } disconnectedCallback() { super.disconnectedCallback(); window.removeEventListener('mousemove', this._mousemoveWindow); window.removeEventListener('mouseup', this._mouseupWindow); window.removeEventListener('touchmove', this._mousemoveWindow); window.removeEventListener('touchend', this._mouseupWindow); } // ------------------------------------------------------------------------- // Control Flow // ------------------------------------------------------------------------- _setCurrentPosition(position) { const oldPos = deepCopy(this._currentPosition); const newPos = deepCopy(position); const oldFen = objToFen(oldPos); const newFen = objToFen(newPos); // do nothing if no change in position if (oldFen === newFen) return; // Fire change event this.dispatchEvent(new CustomEvent('change', { bubbles: true, detail: { oldPosition: oldPos, newPosition: newPos, }, })); // update state this._currentPosition = position; } _isXYOnSquare(x, y) { // TODO: remove cast when TypeScript fixes ShadowRoot.elementsFromPoint const elements = this .shadowRoot.elementsFromPoint(x, y); const squareEl = elements.find((e) => e.classList.contains('square')); const square = squareEl === undefined ? 'offboard' : squareEl.getAttribute('data-square'); return square; } _highlightSquare(square, value = true) { if (value) { this._highlightedSquares.add(square); } else { this._highlightedSquares.delete(square); } this.requestUpdate('_highlightedSquares'); } async _snapbackDraggedPiece() { assertIsDragging(this._dragState); const { source, piece } = this._dragState; // there is no \"snapback\" for spare pieces if (source === 'spare') { return this._trashDraggedPiece(); } this._dragState = { state: 'snapback', piece, source, }; // Wait for a paint this.requestUpdate(); await new Promise((resolve) => setTimeout(resolve, 0)); return new Promise((resolve) => { const transitionComplete = () => { this._draggedPieceElement.removeEventListener('transitionend', transitionComplete); resolve(); this.dispatchEvent(new CustomEvent('snapback-end', { bubbles: true, detail: { piece, square: source, position: deepCopy(this._currentPosition), orientation: this.orientation, }, })); }; this._draggedPieceElement.addEventListener('transitionend', transitionComplete); }); } async _trashDraggedPiece() { assertIsDragging(this._dragState); const { source, piece } = this._dragState; // remove the source piece const newPosition = deepCopy(this._currentPosition); delete newPosition[source]; this._setCurrentPosition(newPosition); this._dragState = { state: 'trash', piece, x: this._dragState.x, y: this._dragState.y, source: this._dragState.source, }; // Wait for a paint this.requestUpdate(); await new Promise((resolve) => setTimeout(resolve, 0)); return new Promise((resolve) => { const transitionComplete = () => { this._draggedPieceElement.removeEventListener('transitionend', transitionComplete); resolve(); }; this._draggedPieceElement.addEventListener('transitionend', transitionComplete); }); } async _dropDraggedPieceOnSquare(square) { assertIsDragging(this._dragState); const { source, piece } = this._dragState; // update position const newPosition = deepCopy(this._currentPosition); delete newPosition[source]; newPosition[square] = piece; this._setCurrentPosition(newPosition); this._dragState = { state: 'snap', piece, location: square, source: square, }; // Wait for a paint this.requestUpdate(); await new Promise((resolve) => setTimeout(resolve, 0)); return new Promise((resolve) => { const transitionComplete = () => { this._draggedPieceElement.removeEventListener('transitionend', transitionComplete); resolve(); // Fire the snap-end event this.dispatchEvent(new CustomEvent('snap-end', { bubbles: true, detail: { source, square, piece, }, })); }; this._draggedPieceElement.addEventListener('transitionend', transitionComplete); }); } _beginDraggingPiece(source, piece, x, y) { // Fire cancalable drag-start event const event = new CustomEvent('drag-start', { bubbles: true, cancelable: true, detail: { source, piece, position: deepCopy(this._currentPosition), orientation: this.orientation, }, }); this.dispatchEvent(event); if (event.defaultPrevented) { return; } // set state this._dragState = { state: 'dragging', x, y, piece, // if the piece came from spare pieces, location is offboard location: source === 'spare' ? 'offboard' : source, source, }; this.requestUpdate(); } _updateDraggedPiece(x, y) { assertIsDragging(this._dragState); // put the dragged piece over the mouse cursor this._dragState.x = x; this._dragState.y = y; this.requestUpdate(); const location = this._isXYOnSquare(x, y); // do nothing more if the location has not changed if (location === this._dragState.location) { return; } // remove highlight from previous square if (validSquare(this._dragState.location)) { this._highlightSquare(this._dragState.location, false); } // add highlight to new square if (validSquare(location)) { this._highlightSquare(location); } this.dispatchEvent(new CustomEvent('drag-move', { bubbles: true, detail: { newLocation: location, oldLocation: this._dragState.location, source: this._dragState.source, piece: this._dragState.piece, position: deepCopy(this._currentPosition), orientation: this.orientation, }, })); // update state this._dragState.location = location; } async _stopDraggedPiece(location) { assertIsDragging(this._dragState); const { source, piece } = this._dragState; // determine what the action should be let action = 'drop'; if (location === 'offboard') { action = this.dropOffBoard === 'trash' ? 'trash' : 'snapback'; } const newPosition = deepCopy(this._currentPosition); const oldPosition = deepCopy(this._currentPosition); // source piece is a spare piece and position is on the board if (source === 'spare' && validSquare(location)) { // add the piece to the board newPosition[location] = piece; } // source piece was on the board if (validSquare(source)) { // remove the piece from the board delete newPosition[source]; // new position is on the board if (validSquare(location)) { // move the piece newPosition[location] = piece; } } // Fire the drop event // Listeners can potentially change the drop action const dropEvent = new CustomEvent('drop', { bubbles: true, detail: { source, target: location, piece, newPosition, oldPosition, orientation: this.orientation, setAction(a) { action = a; }, }, }); this.dispatchEvent(dropEvent); this._highlightedSquares.clear(); // do it! if (action === 'snapback') { await this._snapbackDraggedPiece(); } else if (action === 'trash') { await this._trashDraggedPiece(); } else if (action === 'drop') { await this._dropDraggedPieceOnSquare(location); } // clear state this._dragState = undefined; // Render the final non-dragging state this.requestUpdate(); } // ------------------------------------------------------------------------- // Animations // ------------------------------------------------------------------------- // calculate an array of animations that need to happen in order to get // from pos1 to pos2 _calculateAnimations(pos1, pos2) { // make copies of both pos1 = deepCopy(pos1); pos2 = deepCopy(pos2); const animations = []; const squaresMovedTo = {}; // remove pieces that are the same in both positions for (const i in pos2) { if (!pos2.hasOwnProperty(i)) continue; if (pos1.hasOwnProperty(i) && pos1[i] === pos2[i]) { delete pos1[i]; delete pos2[i]; } } // find all the \"move\" animations for (const i in pos2) { if (!pos2.hasOwnProperty(i)) continue; const closestPiece = findClosestPiece(pos1, pos2[i], i); if (closestPiece) { animations.push({ type: 'move', source: closestPiece, destination: i, piece: pos2[i], }); delete pos1[closestPiece]; delete pos2[i]; squaresMovedTo[i] = true; } } // \"add\" animations for (const i in pos2) { if (!pos2.hasOwnProperty(i)) { continue; } animations.push({ type: 'add', square: i, piece: pos2[i], }); delete pos2[i]; } // \"clear\" animations for (const i in pos1) { if (!pos1.hasOwnProperty(i)) continue; // do not clear a piece if it is on a square that is the result // of a \"move\", ie: a piece capture if (squaresMovedTo.hasOwnProperty(i)) continue; animations.push({ type: 'clear', square: i, piece: pos1[i], }); delete pos1[i]; } return animations; } // execute an array of animations async _doAnimations(animations, oldPos, newPos) { if (animations.length === 0) { return; } let numFinished = 0; const transitionEndListener = () => { numFinished++; if (numFinished === animations.length) { this.shadowRoot.removeEventListener('transitionend', transitionEndListener); this._animations.clear(); this.requestUpdate(); this.dispatchEvent(new CustomEvent('move-end', { bubbles: true, detail: { oldPosition: deepCopy(oldPos), newPosition: deepCopy(newPos), }, })); } }; this.shadowRoot.addEventListener('transitionend', transitionEndListener); // Render once with added pieces at opacity 0 this._animations.clear(); for (const animation of animations) { if (animation.type === 'add' || animation.type === 'add-start') { this._animations.set(animation.square, { ...animation, type: 'add-start', }); } else if (animation.type === 'move' || animation.type === 'move-start') { this._animations.set(animation.destination, { ...animation, type: 'move-start', }); } else { this._animations.set(animation.square, animation); } } // Wait for a paint this.requestUpdate(); await new Promise((resolve) => setTimeout(resolve, 0)); // Render again with the piece at opacity 1 with a transition this._animations.clear(); for (const animation of animations) { if (animation.type === 'move' || animation.type === 'move-start') { this._animations.set(animation.destination, animation); } else { this._animations.set(animation.square, animation); } } this.requestUpdate(); } // ------------------------------------------------------------------------- // Validation / Errors // ------------------------------------------------------------------------- _error(code, msg, _obj) { const errorText = `Chessboard Error ${code} : ${msg}`; this.dispatchEvent(new ErrorEvent('error', { message: errorText, })); return new Error(errorText); } }",
-          "description": "A custom element that renders an interactive chess board."
+          "name": "styles",
+          "default": "css ` :host { display: block; position: relative; --light-color: #f0d9b5; --dark-color: #b58863; --highlight-color: yellow; } [part~='board'] { border: 2px solid #404040; box-sizing: border-box; display: grid; grid-template-columns: repeat(8, 12.5%); grid-template-rows: repeat(8, 12.5%); } [part~='square'] { position: relative; /* disable any native browser highlighting */ -webkit-touch-callout: none; -webkit-user-select: none; -khtml-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none; } [part~='piece'], .piece-image { width: 100%; height: 100%; z-index: 10; } [part~='spare-pieces'] { display: grid; position: relative; padding: 0 2px; grid-template-columns: repeat(8, 12.5%); } [part~='dragged-piece'] { display: none; position: absolute; } [part~='white'] { background-color: var(--light-color); color: var(--dark-color); } [part~='black'] { background-color: var(--dark-color); color: var(--light-color); } [part~='highlight'] { box-shadow: inset 0 0 3px 3px var(--highlight-color); } [part~='notation'] { cursor: default; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 14px; position: absolute; } [part~='alpha'] { bottom: 1px; right: 3px; } [part~='numeric'] { top: 2px; left: 2px; } `"
         }
       ],
       "exports": [
         {
           "kind": "js",
-          "name": "renderWikipediaSVGPiece",
+          "name": "styles",
+          "declaration": {
+            "name": "styles",
+            "module": "dist/utils/chessboard-styles.js"
+          }
+        }
+      ]
+    },
+    {
+      "kind": "javascript-module",
+      "path": "dist/utils/index.js",
+      "declarations": [
+        {
+          "kind": "function",
+          "name": "isString",
+          "parameters": [
+            {
+              "name": "s"
+            }
+          ],
+          "description": "GENERAL UTILITIES."
+        },
+        {
+          "kind": "function",
+          "name": "isFunction",
+          "parameters": [
+            {
+              "name": "f"
+            }
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "isInteger",
+          "parameters": [
+            {
+              "name": "n"
+            }
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "deepCopy",
+          "parameters": [
+            {
+              "name": "thing"
+            }
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "interpolateTemplate",
+          "parameters": [
+            {
+              "name": "str"
+            },
+            {
+              "name": "obj"
+            }
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "START_FEN",
+          "type": {
+            "text": "string"
+          },
+          "default": "'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR'",
+          "description": "CHESS UTILITIES."
+        },
+        {
+          "kind": "variable",
+          "name": "COLUMNS"
+        },
+        {
+          "kind": "variable",
+          "name": "whitePieces",
+          "type": {
+            "text": "array"
+          },
+          "default": "['wK', 'wQ', 'wR', 'wB', 'wN', 'wP']"
+        },
+        {
+          "kind": "variable",
+          "name": "blackPieces",
+          "type": {
+            "text": "array"
+          },
+          "default": "['bK', 'bQ', 'bR', 'bB', 'bN', 'bP']"
+        },
+        {
+          "kind": "function",
+          "name": "getSquareColor",
+          "parameters": [
+            {
+              "name": "square"
+            }
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "validSquare",
+          "parameters": [
+            {
+              "name": "square"
+            }
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "validMove",
+          "parameters": [
+            {
+              "name": "move"
+            }
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "validPieceCode",
+          "parameters": [
+            {
+              "name": "code"
+            }
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "validFen",
+          "parameters": [
+            {
+              "name": "fen"
+            }
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "validPositionObject",
+          "parameters": [
+            {
+              "name": "pos"
+            }
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "fenToObj",
+          "parameters": [
+            {
+              "name": "fen"
+            }
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "START_POSITION"
+        },
+        {
+          "kind": "function",
+          "name": "objToFen",
+          "parameters": [
+            {
+              "name": "obj"
+            }
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "normalizePozition",
+          "parameters": [
+            {
+              "name": "position"
+            }
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "findClosestPiece",
+          "parameters": [
+            {
+              "name": "position"
+            },
+            {
+              "name": "piece"
+            },
+            {
+              "name": "square"
+            }
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "calculatePositionFromMoves",
+          "parameters": [
+            {
+              "name": "position"
+            },
+            {
+              "name": "moves"
+            }
+          ]
+        }
+      ],
+      "exports": [
+        {
+          "kind": "js",
+          "name": "pieces",
+          "declaration": {
+            "name": "pieces",
+            "module": "dist/utils/index.js"
+          }
+        },
+        {
+          "kind": "js",
+          "name": "styles",
+          "declaration": {
+            "name": "styles",
+            "module": "dist/utils/index.js"
+          }
+        },
+        {
+          "kind": "js",
+          "name": "renderPiece",
           "declaration": {
             "name": "renderPiece",
-            "module": "#utils"
+            "module": "dist/utils/index.js"
           }
         },
         {
           "kind": "js",
-          "name": "ChessBoardElement",
+          "name": "isString",
           "declaration": {
-            "name": "ChessBoardElement",
-            "module": "dist/chessboard-element.js"
+            "name": "isString",
+            "module": "dist/utils/index.js"
+          }
+        },
+        {
+          "kind": "js",
+          "name": "isFunction",
+          "declaration": {
+            "name": "isFunction",
+            "module": "dist/utils/index.js"
+          }
+        },
+        {
+          "kind": "js",
+          "name": "isInteger",
+          "declaration": {
+            "name": "isInteger",
+            "module": "dist/utils/index.js"
+          }
+        },
+        {
+          "kind": "js",
+          "name": "deepCopy",
+          "declaration": {
+            "name": "deepCopy",
+            "module": "dist/utils/index.js"
+          }
+        },
+        {
+          "kind": "js",
+          "name": "interpolateTemplate",
+          "declaration": {
+            "name": "interpolateTemplate",
+            "module": "dist/utils/index.js"
+          }
+        },
+        {
+          "kind": "js",
+          "name": "START_FEN",
+          "declaration": {
+            "name": "START_FEN",
+            "module": "dist/utils/index.js"
+          }
+        },
+        {
+          "kind": "js",
+          "name": "COLUMNS",
+          "declaration": {
+            "name": "COLUMNS",
+            "module": "dist/utils/index.js"
+          }
+        },
+        {
+          "kind": "js",
+          "name": "whitePieces",
+          "declaration": {
+            "name": "whitePieces",
+            "module": "dist/utils/index.js"
+          }
+        },
+        {
+          "kind": "js",
+          "name": "blackPieces",
+          "declaration": {
+            "name": "blackPieces",
+            "module": "dist/utils/index.js"
+          }
+        },
+        {
+          "kind": "js",
+          "name": "getSquareColor",
+          "declaration": {
+            "name": "getSquareColor",
+            "module": "dist/utils/index.js"
+          }
+        },
+        {
+          "kind": "js",
+          "name": "validSquare",
+          "declaration": {
+            "name": "validSquare",
+            "module": "dist/utils/index.js"
+          }
+        },
+        {
+          "kind": "js",
+          "name": "validMove",
+          "declaration": {
+            "name": "validMove",
+            "module": "dist/utils/index.js"
+          }
+        },
+        {
+          "kind": "js",
+          "name": "validPieceCode",
+          "declaration": {
+            "name": "validPieceCode",
+            "module": "dist/utils/index.js"
+          }
+        },
+        {
+          "kind": "js",
+          "name": "validFen",
+          "declaration": {
+            "name": "validFen",
+            "module": "dist/utils/index.js"
+          }
+        },
+        {
+          "kind": "js",
+          "name": "validPositionObject",
+          "declaration": {
+            "name": "validPositionObject",
+            "module": "dist/utils/index.js"
+          }
+        },
+        {
+          "kind": "js",
+          "name": "fenToObj",
+          "declaration": {
+            "name": "fenToObj",
+            "module": "dist/utils/index.js"
+          }
+        },
+        {
+          "kind": "js",
+          "name": "START_POSITION",
+          "declaration": {
+            "name": "START_POSITION",
+            "module": "dist/utils/index.js"
+          }
+        },
+        {
+          "kind": "js",
+          "name": "objToFen",
+          "declaration": {
+            "name": "objToFen",
+            "module": "dist/utils/index.js"
+          }
+        },
+        {
+          "kind": "js",
+          "name": "normalizePozition",
+          "declaration": {
+            "name": "normalizePozition",
+            "module": "dist/utils/index.js"
+          }
+        },
+        {
+          "kind": "js",
+          "name": "findClosestPiece",
+          "declaration": {
+            "name": "findClosestPiece",
+            "module": "dist/utils/index.js"
+          }
+        },
+        {
+          "kind": "js",
+          "name": "calculatePositionFromMoves",
+          "declaration": {
+            "name": "calculatePositionFromMoves",
+            "module": "dist/utils/index.js"
           }
         }
       ]
     },
     {
       "kind": "javascript-module",
-      "path": "dist/chessboard.js",
+      "path": "dist/utils/wikipedia-pieces-svg.js",
       "declarations": [
         {
+          "kind": "function",
+          "name": "renderPiece",
+          "parameters": [
+            {
+              "name": "piece"
+            },
+            {
+              "name": "container"
+            }
+          ]
+        },
+        {
           "kind": "variable",
-          "name": "ChessBoard",
-          "default": "class ChessBoard extends LitElement { constructor() { super(...arguments); /** * Whether to show the board notation. */ this.hideNotation = false; /** * The orientation of the board. `'white'` for the white player at the bottom, * `'black'` for the black player at the bottom. */ this.orientation = 'white'; /** * If `true`, pieces on the board are draggable to other squares. */ this.draggablePieces = false; /** * If `'snapback'`, pieces dropped off the board will return to their original * square. If `'trash'`, pieces dropped off the board will be removed from the * board. * * This property has no effect when `draggable` is `false`. */ this.dropOffBoard = 'snapback'; /** * A function that renders DOM for a piece to a container element. This * function can render any elements and text, including SVG. * * The default value renders an SVG image of the piece, unless the * `pieceTheme` property is set, then it uses `pieceTheme` to get the URL for * an `<img>` element. * * @default Function */ this.renderPiece = (piece, container) => { let pieceImage = undefined; if (isString(this.pieceTheme)) { pieceImage = interpolateTemplate(this.pieceTheme, { piece: piece }); } else if (isFunction(this.pieceTheme)) { pieceImage = this.pieceTheme(piece); } if (pieceImage === undefined) { renderWikipediaSVGPiece(piece, container); } else { render(html `<img class=\"piece-image\" src=${pieceImage} />`, container); } }; /** * Animation speed for when pieces move between squares or from spare pieces * to the board. */ this.moveSpeed = DEFAULT_MOVE_SPEED; /** * Animation speed for when pieces that were dropped outside the board return * to their original square. */ this.snapbackSpeed = DEFAULT_SNAPBACK_SPEED; /** * Animation speed for when pieces \\\"snap\\\" to a square when dropped. */ this.snapSpeed = DEFAULT_SNAP_SPEED; /** * Animation speed for when pieces are removed. */ this.trashSpeed = DEFAULT_TRASH_SPEED; /** * Animation speed for when pieces appear on a square. * * Note that the \"appear\" animation only occurs when `sparePieces` is `false`. */ this.appearSpeed = DEFAULT_APPEAR_SPEED; /** * If `true`, the board will have spare pieces that can be dropped onto the * board. If `sparePieces` is set to `true`, `draggablePieces` gets set to * `true` as well. */ this.sparePieces = false; this._highlightedSquares = new Set(); this._animations = new Map(); this._currentPosition = {}; } static { this.styles = styles; } /** * The current position as a FEN string. */ get fen() { return objToFen(this._currentPosition); } /** * The current position of the board, as a `PositionObject`. This property may * be set externally, but only to valid `PositionObject`s. The value is copied * before being applied to the board. Changes to the position object are not * reflected in th rendering. * * To set the position using FEN, or a keyword like `'start'`, or to use * animations, use the `setPosition` method. */ get position() { return this._currentPosition; } set position(v) { const oldValue = this._currentPosition; this._setCurrentPosition(v); this.requestUpdate('position', oldValue); } /** * Whether to show the board notation. This is always the inverse of * `hideNotation`, which reflects the `hide-notation` attribute. * * @default true */ get showNotation() { return !this.hideNotation; } set showNotation(v) { this.hideNotation = !v; } get _squareSize() { // Note: this isn't cached, but is called during user interactions, so we // have a bit of time to use under RAIL guidelines. return this.offsetWidth / 8; } _getSquareElement(square) { return this.shadowRoot.getElementById(squareId(square)); } _getSparePieceElement(piece) { return this.shadowRoot.getElementById(sparePieceId(piece)); } // ------------------------------------------------------------------------- // DOM Building // ------------------------------------------------------------------------- render() { return html ` <div part=\"spare-pieces\"> ${this._renderSparePieces(this.orientation === 'white' ? 'black' : 'white')} </div> ${this._renderBoard()} <div part=\"spare-pieces\"> ${this._renderSparePieces(this.orientation === 'white' ? 'white' : 'black')} </div> <div id=\"dragged-pieces\" part=\"dragged-pieces\" style=${styleMap({ width: `0px`, height: `0px`, overflow: `visible`, })} > ${this._renderDraggedPiece()} </div> `; } _renderSparePieces(color) { if (!this.sparePieces) { return nothing; } const pieces = color === 'black' ? blackPieces : whitePieces; // The empty <div>s below are placeholders to get the shelf to line up with // the board's grid. Another option would be to try to use the same grid, // either with a single container, or subgrid/display:contents when those // are available. return html ` <div></div> ${pieces.map((p) => html ` <div id=\"spare-${p}\" @mousedown=${this._mousedownSparePiece} @touchstart=${this._mousedownSparePiece} > ${this._renderPiece(p, {}, false, sparePieceId(p))} </div> `)} <div></div> `; } _renderDraggedPiece() { const styles = { height: `${this._squareSize}px`, width: `${this._squareSize}px`, }; const dragState = this._dragState; if (dragState !== undefined) { styles.display = 'block'; const rect = this.getBoundingClientRect(); if (dragState.state === 'dragging') { const { x, y } = dragState; Object.assign(styles, { top: `${y - rect.top - this._squareSize / 2}px`, left: `${x - rect.left - this._squareSize / 2}px`, }); } else if (dragState.state === 'snapback') { const { source } = dragState; const square = this._getSquareElement(source); const squareRect = square.getBoundingClientRect(); Object.assign(styles, { transitionProperty: 'top, left', transitionDuration: `${speedToMS(this.snapbackSpeed)}ms`, top: `${squareRect.top - rect.top}px`, left: `${squareRect.left - rect.left}px`, }); } else if (dragState.state === 'trash') { const { x, y } = dragState; Object.assign(styles, { transitionProperty: 'opacity', transitionDuration: `${speedToMS(this.trashSpeed)}ms`, opacity: '0', top: `${y - rect.top - this._squareSize / 2}px`, left: `${x - rect.left - this._squareSize / 2}px`, }); } else if (dragState.state === 'snap') { const square = this._getSquareElement(dragState.location); const squareRect = square.getBoundingClientRect(); Object.assign(styles, { transitionProperty: 'top, left', transitionDuration: `${speedToMS(this.snapSpeed)}ms`, top: `${squareRect.top - rect.top}px`, left: `${squareRect.left - rect.left}px`, }); } } return this._renderPiece(this._dragState?.piece ?? '', styles, false, undefined, 'dragged-piece'); } _renderBoard() { const squares = []; const isFlipped = this.orientation === 'black'; for (let row = 0; row < 8; row++) { for (let col = 0; col < 8; col++) { const file = COLUMNS[isFlipped ? 7 - col : col]; const rank = isFlipped ? row + 1 : 8 - row; const square = `${file}${rank}`; const squareColor = getSquareColor(square); let piece = this._currentPosition[square]; const isDragSource = square === this._dragState?.source; const animation = this._animations.get(square); const highlight = isDragSource || this._highlightedSquares.has(square) ? 'highlight' : ''; const pieceStyles = this._getAnimationStyles(piece, animation); if (!piece && animation?.type === 'clear') { // Preserve the piece until the animation is complete piece = animation.piece; } squares.push(html ` <div class=\"square\" id=${squareId(square)} data-square=${square} part=\"square ${square} ${squareColor} ${highlight}\" @mousedown=${this._mousedownSquare} @mouseenter=${this._mouseenterSquare} @mouseleave=${this._mouseleaveSquare} @touchstart=${this._mousedownSquare} > ${this.showNotation && row === 7 ? html `<div part=\"notation alpha\">${file}</div>` : nothing} ${this.showNotation && col === 0 ? html `<div part=\"notation numeric\">${rank}</div>` : nothing} ${this._renderPiece(piece, pieceStyles, isDragSource)} </div> `); } } const styles = { width: this._squareSize * 8 + 'px', height: this._squareSize * 8 + 'px', }; return html `<div part=\"board\" style=${styleMap(styles)}>${squares}</div>`; } _renderPiece(piece, styles, isDragSource, id, part) { if (piece === undefined) { return nothing; } const style = { opacity: '1', transitionProperty: '', transitionDuration: '0ms', ...styles, }; if (isDragSource || piece === '') { style.display = 'none'; } if (piece === '') { return nothing; } if (!isFunction(this.renderPiece)) { this._error(8272, 'invalid renderPiece.'); } return html ` <div id=${ifDefined(id)} part=\"piece ${part ?? ''}\" piece=${piece} style=${styleMap(style)} ...=${renderPieceDirective(piece, this.renderPiece)} ></div> `; } _getAnimationStyles(piece, animation) { if (animation) { if (piece && (animation.type === 'move-start' || (animation.type === 'add-start' && this.draggablePieces))) { // BoardPosition the moved piece absolutely at the source const srcSquare = animation.type === 'move-start' ? this._getSquareElement(animation.source) : this._getSparePieceElement(piece); const destSquare = animation.type === 'move-start' ? this._getSquareElement(animation.destination) : this._getSquareElement(animation.square); const srcSquareRect = srcSquare.getBoundingClientRect(); const destSquareRect = destSquare.getBoundingClientRect(); return { position: 'absolute', left: `${srcSquareRect.left - destSquareRect.left}px`, top: `${srcSquareRect.top - destSquareRect.top}px`, width: `${this._squareSize}px`, height: `${this._squareSize}px`, }; } if (piece && (animation.type === 'move' || (animation.type === 'add' && this.draggablePieces))) { // Transition the moved piece to the destination return { position: 'absolute', transitionProperty: 'top, left', transitionDuration: `${speedToMS(this.moveSpeed)}ms`, top: `0`, left: `0`, width: `${this._squareSize}px`, height: `${this._squareSize}px`, }; } if (!piece && animation.type === 'clear') { // Preserve and transition a removed piece to opacity 0 piece = animation.piece; return { transitionProperty: 'opacity', transitionDuration: `${speedToMS(this.trashSpeed)}ms`, opacity: '0', }; } if (piece && animation.type === 'add-start') { // Initialize an added piece to opacity 0 return { opacity: '0', }; } if (piece && animation.type === 'add') { // Transition an added piece to opacity 1 return { transitionProperty: 'opacity', transitionDuration: `${speedToMS(this.appearSpeed)}ms`, }; } } return {}; } // ------------------------------------------------------------------------- // Event Listeners // ------------------------------------------------------------------------- _mousedownSquare(e) { // do nothing if we're not draggable. sparePieces implies draggable if (!this.draggablePieces && !this.sparePieces) { return; } // do nothing if there is no piece on this square const squareEl = e.currentTarget; const square = squareEl.getAttribute('data-square'); if (square === null || !this._currentPosition.hasOwnProperty(square)) { return; } e.preventDefault(); const pos = e instanceof MouseEvent ? e : e.changedTouches[0]; this._beginDraggingPiece(square, this._currentPosition[square], pos.clientX, pos.clientY); } _mousedownSparePiece(e) { // do nothing if sparePieces is not enabled if (!this.sparePieces) { return; } const sparePieceContainerEl = e.currentTarget; const pieceEl = sparePieceContainerEl.querySelector('[part~=piece]'); const piece = pieceEl.getAttribute('piece'); e.preventDefault(); const pos = e instanceof MouseEvent ? e : e.changedTouches[0]; this._beginDraggingPiece('spare', piece, pos.clientX, pos.clientY); } _mouseenterSquare(e) { // do not fire this event if we are dragging a piece // NOTE: this should never happen, but it's a safeguard if (this._dragState !== undefined) { return; } // get the square const square = e.currentTarget.getAttribute('data-square'); // NOTE: this should never happen; defensive if (!validSquare(square)) { return; } // Get the piece on this square const piece = this._currentPosition.hasOwnProperty(square) && this._currentPosition[square]; this.dispatchEvent(new CustomEvent('mouseover-square', { bubbles: true, detail: { square, piece, position: deepCopy(this._currentPosition), orientation: this.orientation, }, })); } _mouseleaveSquare(e) { // Do not fire this event if we are dragging a piece // NOTE: this should never happen, but it's a safeguard if (this._dragState !== undefined) { return; } const square = e.currentTarget.getAttribute('data-square'); // NOTE: this should never happen; defensive if (!validSquare(square)) { return; } // Get the piece on this square const piece = this._currentPosition.hasOwnProperty(square) && this._currentPosition[square]; // execute their function this.dispatchEvent(new CustomEvent('mouseout-square', { bubbles: true, detail: { square, piece, position: deepCopy(this._currentPosition), orientation: this.orientation, }, })); } _mousemoveWindow(e) { // Do nothing if we are not dragging a piece if (!(this._dragState?.state === 'dragging')) { return; } // Prevent screen from scrolling e.preventDefault(); const pos = e instanceof MouseEvent ? e : e.changedTouches[0]; this._updateDraggedPiece(pos.clientX, pos.clientY); } _mouseupWindow(e) { // Do nothing if we are not dragging a piece if (!(this._dragState?.state === 'dragging')) { return; } const pos = e instanceof MouseEvent ? e : e.changedTouches[0]; const location = this._isXYOnSquare(pos.clientX, pos.clientY); this._stopDraggedPiece(location); } // ------------------------------------------------------------------------- // Public Methods // ------------------------------------------------------------------------- /** * Sets the position of the board. * * @param useAnimation If `true`, animate to the new position. If `false`, * show the new position instantly. */ setPosition(position, useAnimation = true) { position = normalizePozition(position); // validate position object if (!validPositionObject(position)) { throw this._error(6482, 'Invalid value passed to the position method.', position); } if (useAnimation) { // start the animations const animations = this._calculateAnimations(this._currentPosition, position); this._doAnimations(animations, this._currentPosition, position); } this._setCurrentPosition(position); this.requestUpdate(); } /** * Sets the board to the start position. * * @param useAnimation If `true`, animate to the new position. If `false`, * show the new position instantly. */ start(useAnimation) { this.setPosition('start', useAnimation); } /** * Removes all the pieces on the board. If `useAnimation` is `false`, removes * pieces instantly. * * This is shorthand for `setPosition({})`. * * @param useAnimation If `true`, animate to the new position. If `false`, * show the new position instantly. */ clear(useAnimation) { this.setPosition({}, useAnimation); } /** * Executes one or more moves on the board. * * Moves are strings the form of \"e2-e4\", \"f6-d5\", etc., Pass `false` as an * argument to disable animation. */ move(...args) { let useAnimation = true; // collect the moves into an object const moves = {}; for (const arg of args) { // any \"false\" to this function means no animations if (arg === false) { useAnimation = false; continue; } // skip invalid arguments if (!validMove(arg)) { this._error(2826, 'Invalid move passed to the move method.', arg); continue; } const [from, to] = arg.split('-'); moves[from] = to; } // calculate position from moves const newPos = calculatePositionFromMoves(this._currentPosition, moves); // update the board this.setPosition(newPos, useAnimation); // return the new position object return newPos; } /** * Flip the orientation. */ flip() { this.orientation = this.orientation === 'white' ? 'black' : 'white'; } /** * Recalculates board and square sizes based on the parent element and redraws * the board accordingly. */ resize() { this.requestUpdate(); } // ------------------------------------------------------------------------- // Lifecycle Callbacks // ------------------------------------------------------------------------- firstUpdated() { // We need to re-render to read the size of the container this.requestUpdate(); if (window.ResizeObserver !== undefined) { new ResizeObserver(() => { this.resize(); }).observe(this); } } connectedCallback() { super.connectedCallback(); window.addEventListener('mousemove', this._mousemoveWindow); window.addEventListener('mouseup', this._mouseupWindow); window.addEventListener('touchmove', this._mousemoveWindow, { passive: false, }); window.addEventListener('touchend', this._mouseupWindow, { passive: false, }); } disconnectedCallback() { super.disconnectedCallback(); window.removeEventListener('mousemove', this._mousemoveWindow); window.removeEventListener('mouseup', this._mouseupWindow); window.removeEventListener('touchmove', this._mousemoveWindow); window.removeEventListener('touchend', this._mouseupWindow); } // ------------------------------------------------------------------------- // Control Flow // ------------------------------------------------------------------------- _setCurrentPosition(position) { const oldPos = deepCopy(this._currentPosition); const newPos = deepCopy(position); const oldFen = objToFen(oldPos); const newFen = objToFen(newPos); // do nothing if no change in position if (oldFen === newFen) return; // Fire change event this.dispatchEvent(new CustomEvent('change', { bubbles: true, detail: { oldPosition: oldPos, newPosition: newPos, }, })); // update state this._currentPosition = position; } _isXYOnSquare(x, y) { // TODO: remove cast when TypeScript fixes ShadowRoot.elementsFromPoint const elements = this .shadowRoot.elementsFromPoint(x, y); const squareEl = elements.find((e) => e.classList.contains('square')); const square = squareEl === undefined ? 'offboard' : squareEl.getAttribute('data-square'); return square; } _highlightSquare(square, value = true) { if (value) { this._highlightedSquares.add(square); } else { this._highlightedSquares.delete(square); } this.requestUpdate('_highlightedSquares'); } async _snapbackDraggedPiece() { assertIsDragging(this._dragState); const { source, piece } = this._dragState; // there is no \"snapback\" for spare pieces if (source === 'spare') { return this._trashDraggedPiece(); } this._dragState = { state: 'snapback', piece, source, }; // Wait for a paint this.requestUpdate(); await new Promise((resolve) => setTimeout(resolve, 0)); return new Promise((resolve) => { const transitionComplete = () => { this._draggedPieceElement.removeEventListener('transitionend', transitionComplete); resolve(); this.dispatchEvent(new CustomEvent('snapback-end', { bubbles: true, detail: { piece, square: source, position: deepCopy(this._currentPosition), orientation: this.orientation, }, })); }; this._draggedPieceElement.addEventListener('transitionend', transitionComplete); }); } async _trashDraggedPiece() { assertIsDragging(this._dragState); const { source, piece } = this._dragState; // remove the source piece const newPosition = deepCopy(this._currentPosition); delete newPosition[source]; this._setCurrentPosition(newPosition); this._dragState = { state: 'trash', piece, x: this._dragState.x, y: this._dragState.y, source: this._dragState.source, }; // Wait for a paint this.requestUpdate(); await new Promise((resolve) => setTimeout(resolve, 0)); return new Promise((resolve) => { const transitionComplete = () => { this._draggedPieceElement.removeEventListener('transitionend', transitionComplete); resolve(); }; this._draggedPieceElement.addEventListener('transitionend', transitionComplete); }); } async _dropDraggedPieceOnSquare(square) { assertIsDragging(this._dragState); const { source, piece } = this._dragState; // update position const newPosition = deepCopy(this._currentPosition); delete newPosition[source]; newPosition[square] = piece; this._setCurrentPosition(newPosition); this._dragState = { state: 'snap', piece, location: square, source: square, }; // Wait for a paint this.requestUpdate(); await new Promise((resolve) => setTimeout(resolve, 0)); return new Promise((resolve) => { const transitionComplete = () => { this._draggedPieceElement.removeEventListener('transitionend', transitionComplete); resolve(); // Fire the snap-end event this.dispatchEvent(new CustomEvent('snap-end', { bubbles: true, detail: { source, square, piece, }, })); }; this._draggedPieceElement.addEventListener('transitionend', transitionComplete); }); } _beginDraggingPiece(source, piece, x, y) { // Fire cancalable drag-start event const event = new CustomEvent('drag-start', { bubbles: true, cancelable: true, detail: { source, piece, position: deepCopy(this._currentPosition), orientation: this.orientation, }, }); this.dispatchEvent(event); if (event.defaultPrevented) { return; } // set state this._dragState = { state: 'dragging', x, y, piece, // if the piece came from spare pieces, location is offboard location: source === 'spare' ? 'offboard' : source, source, }; this.requestUpdate(); } _updateDraggedPiece(x, y) { assertIsDragging(this._dragState); // put the dragged piece over the mouse cursor this._dragState.x = x; this._dragState.y = y; this.requestUpdate(); const location = this._isXYOnSquare(x, y); // do nothing more if the location has not changed if (location === this._dragState.location) { return; } // remove highlight from previous square if (validSquare(this._dragState.location)) { this._highlightSquare(this._dragState.location, false); } // add highlight to new square if (validSquare(location)) { this._highlightSquare(location); } this.dispatchEvent(new CustomEvent('drag-move', { bubbles: true, detail: { newLocation: location, oldLocation: this._dragState.location, source: this._dragState.source, piece: this._dragState.piece, position: deepCopy(this._currentPosition), orientation: this.orientation, }, })); // update state this._dragState.location = location; } async _stopDraggedPiece(location) { assertIsDragging(this._dragState); const { source, piece } = this._dragState; // determine what the action should be let action = 'drop'; if (location === 'offboard') { action = this.dropOffBoard === 'trash' ? 'trash' : 'snapback'; } const newPosition = deepCopy(this._currentPosition); const oldPosition = deepCopy(this._currentPosition); // source piece is a spare piece and position is on the board if (source === 'spare' && validSquare(location)) { // add the piece to the board newPosition[location] = piece; } // source piece was on the board if (validSquare(source)) { // remove the piece from the board delete newPosition[source]; // new position is on the board if (validSquare(location)) { // move the piece newPosition[location] = piece; } } // Fire the drop event // Listeners can potentially change the drop action const dropEvent = new CustomEvent('drop', { bubbles: true, detail: { source, target: location, piece, newPosition, oldPosition, orientation: this.orientation, setAction(a) { action = a; }, }, }); this.dispatchEvent(dropEvent); this._highlightedSquares.clear(); // do it! if (action === 'snapback') { await this._snapbackDraggedPiece(); } else if (action === 'trash') { await this._trashDraggedPiece(); } else if (action === 'drop') { await this._dropDraggedPieceOnSquare(location); } // clear state this._dragState = undefined; // Render the final non-dragging state this.requestUpdate(); } // ------------------------------------------------------------------------- // Animations // ------------------------------------------------------------------------- // calculate an array of animations that need to happen in order to get // from pos1 to pos2 _calculateAnimations(pos1, pos2) { // make copies of both pos1 = deepCopy(pos1); pos2 = deepCopy(pos2); const animations = []; const squaresMovedTo = {}; // remove pieces that are the same in both positions for (const i in pos2) { if (!pos2.hasOwnProperty(i)) continue; if (pos1.hasOwnProperty(i) && pos1[i] === pos2[i]) { delete pos1[i]; delete pos2[i]; } } // find all the \"move\" animations for (const i in pos2) { if (!pos2.hasOwnProperty(i)) continue; const closestPiece = findClosestPiece(pos1, pos2[i], i); if (closestPiece) { animations.push({ type: 'move', source: closestPiece, destination: i, piece: pos2[i], }); delete pos1[closestPiece]; delete pos2[i]; squaresMovedTo[i] = true; } } // \"add\" animations for (const i in pos2) { if (!pos2.hasOwnProperty(i)) { continue; } animations.push({ type: 'add', square: i, piece: pos2[i], }); delete pos2[i]; } // \"clear\" animations for (const i in pos1) { if (!pos1.hasOwnProperty(i)) continue; // do not clear a piece if it is on a square that is the result // of a \"move\", ie: a piece capture if (squaresMovedTo.hasOwnProperty(i)) continue; animations.push({ type: 'clear', square: i, piece: pos1[i], }); delete pos1[i]; } return animations; } // execute an array of animations async _doAnimations(animations, oldPos, newPos) { if (animations.length === 0) { return; } let numFinished = 0; const transitionEndListener = () => { numFinished++; if (numFinished === animations.length) { this.shadowRoot.removeEventListener('transitionend', transitionEndListener); this._animations.clear(); this.requestUpdate(); this.dispatchEvent(new CustomEvent('move-end', { bubbles: true, detail: { oldPosition: deepCopy(oldPos), newPosition: deepCopy(newPos), }, })); } }; this.shadowRoot.addEventListener('transitionend', transitionEndListener); // Render once with added pieces at opacity 0 this._animations.clear(); for (const animation of animations) { if (animation.type === 'add' || animation.type === 'add-start') { this._animations.set(animation.square, { ...animation, type: 'add-start', }); } else if (animation.type === 'move' || animation.type === 'move-start') { this._animations.set(animation.destination, { ...animation, type: 'move-start', }); } else { this._animations.set(animation.square, animation); } } // Wait for a paint this.requestUpdate(); await new Promise((resolve) => setTimeout(resolve, 0)); // Render again with the piece at opacity 1 with a transition this._animations.clear(); for (const animation of animations) { if (animation.type === 'move' || animation.type === 'move-start') { this._animations.set(animation.destination, animation); } else { this._animations.set(animation.square, animation); } } this.requestUpdate(); } // ------------------------------------------------------------------------- // Validation / Errors // ------------------------------------------------------------------------- _error(code, msg, _obj) { const errorText = `Chessboard Error ${code} : ${msg}`; this.dispatchEvent(new ErrorEvent('error', { message: errorText, })); return new Error(errorText); } }",
-          "description": "A custom element that renders an interactive chess board."
+          "name": "pieces",
+          "type": {
+            "text": "object"
+          },
+          "default": "{ bB: svg ` <g style=\"opacity:1; fill:none; fill-rule:evenodd; fill-opacity:1; stroke:#000000; stroke-width:1.5; stroke-linecap:round; stroke-linejoin:round; stroke-miterlimit:4; stroke-dasharray:none; stroke-opacity:1;\"> <g style=\"fill:#000000; stroke:#000000; stroke-linecap:butt;\"> <path d=\"M 9,36 C 12.39,35.03 19.11,36.43 22.5,34 C 25.89,36.43 32.61,35.03 36,36 C 36,36 37.65,36.54 39,38 C 38.32,38.97 37.35,38.99 36,38.5 C 32.61,37.53 25.89,38.96 22.5,37.5 C 19.11,38.96 12.39,37.53 9,38.5 C 7.646,38.99 6.677,38.97 6,38 C 7.354,36.06 9,36 9,36 z\" /> <path d=\"M 15,32 C 17.5,34.5 27.5,34.5 30,32 C 30.5,30.5 30,30 30,30 C 30,27.5 27.5,26 27.5,26 C 33,24.5 33.5,14.5 22.5,10.5 C 11.5,14.5 12,24.5 17.5,26 C 17.5,26 15,27.5 15,30 C 15,30 14.5,30.5 15,32 z\" /> <path d=\"M 25 8 A 2.5 2.5 0 1 1 20,8 A 2.5 2.5 0 1 1 25 8 z\" /> </g> <path d=\"M 17.5,26 L 27.5,26 M 15,30 L 30,30 M 22.5,15.5 L 22.5,20.5 M 20,18 L 25,18\" style=\"fill:none; stroke:#ffffff; stroke-linejoin:miter;\" /> </g> `, wB: svg ` <g style=\"opacity:1; fill:none; fill-rule:evenodd; fill-opacity:1; stroke:#000000; stroke-width:1.5; stroke-linecap:round; stroke-linejoin:round; stroke-miterlimit:4; stroke-dasharray:none; stroke-opacity:1;\"> <g style=\"fill:#ffffff; stroke:#000000; stroke-linecap:butt;\"> <path d=\"M 9,36 C 12.39,35.03 19.11,36.43 22.5,34 C 25.89,36.43 32.61,35.03 36,36 C 36,36 37.65,36.54 39,38 C 38.32,38.97 37.35,38.99 36,38.5 C 32.61,37.53 25.89,38.96 22.5,37.5 C 19.11,38.96 12.39,37.53 9,38.5 C 7.646,38.99 6.677,38.97 6,38 C 7.354,36.06 9,36 9,36 z\" /> <path d=\"M 15,32 C 17.5,34.5 27.5,34.5 30,32 C 30.5,30.5 30,30 30,30 C 30,27.5 27.5,26 27.5,26 C 33,24.5 33.5,14.5 22.5,10.5 C 11.5,14.5 12,24.5 17.5,26 C 17.5,26 15,27.5 15,30 C 15,30 14.5,30.5 15,32 z\" /> <path d=\"M 25 8 A 2.5 2.5 0 1 1 20,8 A 2.5 2.5 0 1 1 25 8 z\" /> </g> <path d=\"M 17.5,26 L 27.5,26 M 15,30 L 30,30 M 22.5,15.5 L 22.5,20.5 M 20,18 L 25,18\" style=\"fill:none; stroke:#000000; stroke-linejoin:miter;\" /> </g> `, bK: svg ` <g style=\"fill:none; fill-opacity:1; fill-rule:evenodd; stroke:#000000; stroke-width:1.5; stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4; stroke-dasharray:none; stroke-opacity:1;\"> <path d=\"M 22.5,11.63 L 22.5,6\" style=\"fill:none; stroke:#000000; stroke-linejoin:miter;\" id=\"path6570\" /> <path d=\"M 22.5,25 C 22.5,25 27,17.5 25.5,14.5 C 25.5,14.5 24.5,12 22.5,12 C 20.5,12 19.5,14.5 19.5,14.5 C 18,17.5 22.5,25 22.5,25\" style=\"fill:#000000;fill-opacity:1; stroke-linecap:butt; stroke-linejoin:miter;\" /> <path d=\"M 11.5,37 C 17,40.5 27,40.5 32.5,37 L 32.5,30 C 32.5,30 41.5,25.5 38.5,19.5 C 34.5,13 25,16 22.5,23.5 L 22.5,27 L 22.5,23.5 C 19,16 9.5,13 6.5,19.5 C 3.5,25.5 11.5,29.5 11.5,29.5 L 11.5,37 z \" style=\"fill:#000000; stroke:#000000;\" /> <path d=\"M 20,8 L 25,8\" style=\"fill:none; stroke:#000000; stroke-linejoin:miter;\" /> <path d=\"M 32,29.5 C 32,29.5 40.5,25.5 38.03,19.85 C 34.15,14 25,18 22.5,24.5 L 22.51,26.6 L 22.5,24.5 C 20,18 9.906,14 6.997,19.85 C 4.5,25.5 11.85,28.85 11.85,28.85\" style=\"fill:none; stroke:#ffffff;\" /> <path d=\"M 11.5,30 C 17,27 27,27 32.5,30 M 11.5,33.5 C 17,30.5 27,30.5 32.5,33.5 M 11.5,37 C 17,34 27,34 32.5,37\" style=\"fill:none; stroke:#ffffff;\" /> </g> `, wK: svg ` <g style=\"fill:none; fill-opacity:1; fill-rule:evenodd; stroke:#000000; stroke-width:1.5; stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4; stroke-dasharray:none; stroke-opacity:1;\"> <path d=\"M 22.5,11.63 L 22.5,6\" style=\"fill:none; stroke:#000000; stroke-linejoin:miter;\" /> <path d=\"M 20,8 L 25,8\" style=\"fill:none; stroke:#000000; stroke-linejoin:miter;\" /> <path d=\"M 22.5,25 C 22.5,25 27,17.5 25.5,14.5 C 25.5,14.5 24.5,12 22.5,12 C 20.5,12 19.5,14.5 19.5,14.5 C 18,17.5 22.5,25 22.5,25\" style=\"fill:#ffffff; stroke:#000000; stroke-linecap:butt; stroke-linejoin:miter;\" /> <path d=\"M 11.5,37 C 17,40.5 27,40.5 32.5,37 L 32.5,30 C 32.5,30 41.5,25.5 38.5,19.5 C 34.5,13 25,16 22.5,23.5 L 22.5,27 L 22.5,23.5 C 19,16 9.5,13 6.5,19.5 C 3.5,25.5 11.5,29.5 11.5,29.5 L 11.5,37 z \" style=\"fill:#ffffff; stroke:#000000;\" /> <path d=\"M 11.5,30 C 17,27 27,27 32.5,30\" style=\"fill:none; stroke:#000000;\" /> <path d=\"M 11.5,33.5 C 17,30.5 27,30.5 32.5,33.5\" style=\"fill:none; stroke:#000000;\" /> <path d=\"M 11.5,37 C 17,34 27,34 32.5,37\" style=\"fill:none; stroke:#000000;\" /> </g> `, bN: svg ` <g style=\"opacity:1; fill:none; fill-opacity:1; fill-rule:evenodd; stroke:#000000; stroke-width:1.5; stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4; stroke-dasharray:none; stroke-opacity:1;\"> <path d=\"M 22,10 C 32.5,11 38.5,18 38,39 L 15,39 C 15,30 25,32.5 23,18\" style=\"fill:#000000; stroke:#000000;\" /> <path d=\"M 24,18 C 24.38,20.91 18.45,25.37 16,27 C 13,29 13.18,31.34 11,31 C 9.958,30.06 12.41,27.96 11,28 C 10,28 11.19,29.23 10,30 C 9,30 5.997,31 6,26 C 6,24 12,14 12,14 C 12,14 13.89,12.1 14,10.5 C 13.27,9.506 13.5,8.5 13.5,7.5 C 14.5,6.5 16.5,10 16.5,10 L 18.5,10 C 18.5,10 19.28,8.008 21,7 C 22,7 22,10 22,10\" style=\"fill:#000000; stroke:#000000;\" /> <path d=\"M 9.5 25.5 A 0.5 0.5 0 1 1 8.5,25.5 A 0.5 0.5 0 1 1 9.5 25.5 z\" style=\"fill:#ffffff; stroke:#ffffff;\" /> <path d=\"M 15 15.5 A 0.5 1.5 0 1 1 14,15.5 A 0.5 1.5 0 1 1 15 15.5 z\" transform=\"matrix(0.866,0.5,-0.5,0.866,9.693,-5.173)\" style=\"fill:#ffffff; stroke:#ffffff;\" /> <path d=\"M 24.55,10.4 L 24.1,11.85 L 24.6,12 C 27.75,13 30.25,14.49 32.5,18.75 C 34.75,23.01 35.75,29.06 35.25,39 L 35.2,39.5 L 37.45,39.5 L 37.5,39 C 38,28.94 36.62,22.15 34.25,17.66 C 31.88,13.17 28.46,11.02 25.06,10.5 L 24.55,10.4 z \" style=\"fill:#ffffff; stroke:none;\" /> </g> `, wN: svg ` <g style=\"opacity:1; fill:none; fill-opacity:1; fill-rule:evenodd; stroke:#000000; stroke-width:1.5; stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4; stroke-dasharray:none; stroke-opacity:1;\"> <path d=\"M 22,10 C 32.5,11 38.5,18 38,39 L 15,39 C 15,30 25,32.5 23,18\" style=\"fill:#ffffff; stroke:#000000;\" /> <path d=\"M 24,18 C 24.38,20.91 18.45,25.37 16,27 C 13,29 13.18,31.34 11,31 C 9.958,30.06 12.41,27.96 11,28 C 10,28 11.19,29.23 10,30 C 9,30 5.997,31 6,26 C 6,24 12,14 12,14 C 12,14 13.89,12.1 14,10.5 C 13.27,9.506 13.5,8.5 13.5,7.5 C 14.5,6.5 16.5,10 16.5,10 L 18.5,10 C 18.5,10 19.28,8.008 21,7 C 22,7 22,10 22,10\" style=\"fill:#ffffff; stroke:#000000;\" /> <path d=\"M 9.5 25.5 A 0.5 0.5 0 1 1 8.5,25.5 A 0.5 0.5 0 1 1 9.5 25.5 z\" style=\"fill:#000000; stroke:#000000;\" /> <path d=\"M 15 15.5 A 0.5 1.5 0 1 1 14,15.5 A 0.5 1.5 0 1 1 15 15.5 z\" transform=\"matrix(0.866,0.5,-0.5,0.866,9.693,-5.173)\" style=\"fill:#000000; stroke:#000000;\" /> </g> `, bP: svg ` <path d=\"M 22,9 C 19.79,9 18,10.79 18,13 C 18,13.89 18.29,14.71 18.78,15.38 C 16.83,16.5 15.5,18.59 15.5,21 C 15.5,23.03 16.44,24.84 17.91,26.03 C 14.91,27.09 10.5,31.58 10.5,39.5 L 33.5,39.5 C 33.5,31.58 29.09,27.09 26.09,26.03 C 27.56,24.84 28.5,23.03 28.5,21 C 28.5,18.59 27.17,16.5 25.22,15.38 C 25.71,14.71 26,13.89 26,13 C 26,10.79 24.21,9 22,9 z \" style=\"opacity:1; fill:#000000; fill-opacity:1; fill-rule:nonzero; stroke:#000000; stroke-width:1.5; stroke-linecap:round; stroke-linejoin:miter; stroke-miterlimit:4; stroke-dasharray:none; stroke-opacity:1;\" /> `, wP: svg ` <path d=\"M 22,9 C 19.79,9 18,10.79 18,13 C 18,13.89 18.29,14.71 18.78,15.38 C 16.83,16.5 15.5,18.59 15.5,21 C 15.5,23.03 16.44,24.84 17.91,26.03 C 14.91,27.09 10.5,31.58 10.5,39.5 L 33.5,39.5 C 33.5,31.58 29.09,27.09 26.09,26.03 C 27.56,24.84 28.5,23.03 28.5,21 C 28.5,18.59 27.17,16.5 25.22,15.38 C 25.71,14.71 26,13.89 26,13 C 26,10.79 24.21,9 22,9 z \" style=\"opacity:1; fill:#ffffff; fill-opacity:1; fill-rule:nonzero; stroke:#000000; stroke-width:1.5; stroke-linecap:round; stroke-linejoin:miter; stroke-miterlimit:4; stroke-dasharray:none; stroke-opacity:1;\" /> `, bQ: svg ` <g style=\"opacity:1; fill:000000; fill-opacity:1; fill-rule:evenodd; stroke:#000000; stroke-width:1.5; stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4; stroke-dasharray:none; stroke-opacity:1;\"> <g style=\"fill:#000000; stroke:none;\"> <circle cx=\"6\" cy=\"12\" r=\"2.75\" /> <circle cx=\"14\" cy=\"9\" r=\"2.75\" /> <circle cx=\"22.5\" cy=\"8\" r=\"2.75\" /> <circle cx=\"31\" cy=\"9\" r=\"2.75\" /> <circle cx=\"39\" cy=\"12\" r=\"2.75\" /> </g> <path d=\"M 9,26 C 17.5,24.5 30,24.5 36,26 L 38.5,13.5 L 31,25 L 30.7,10.9 L 25.5,24.5 L 22.5,10 L 19.5,24.5 L 14.3,10.9 L 14,25 L 6.5,13.5 L 9,26 z\" style=\"stroke-linecap:butt; stroke:#000000;\" /> <path d=\"M 9,26 C 9,28 10.5,28 11.5,30 C 12.5,31.5 12.5,31 12,33.5 C 10.5,34.5 10.5,36 10.5,36 C 9,37.5 11,38.5 11,38.5 C 17.5,39.5 27.5,39.5 34,38.5 C 34,38.5 35.5,37.5 34,36 C 34,36 34.5,34.5 33,33.5 C 32.5,31 32.5,31.5 33.5,30 C 34.5,28 36,28 36,26 C 27.5,24.5 17.5,24.5 9,26 z\" style=\"stroke-linecap:butt;\" /> <path d=\"M 11,38.5 A 35,35 1 0 0 34,38.5\" style=\"fill:none; stroke:#000000; stroke-linecap:butt;\" /> <path d=\"M 11,29 A 35,35 1 0 1 34,29\" style=\"fill:none; stroke:#ffffff;\" /> <path d=\"M 12.5,31.5 L 32.5,31.5\" style=\"fill:none; stroke:#ffffff;\" /> <path d=\"M 11.5,34.5 A 35,35 1 0 0 33.5,34.5\" style=\"fill:none; stroke:#ffffff;\" /> <path d=\"M 10.5,37.5 A 35,35 1 0 0 34.5,37.5\" style=\"fill:none; stroke:#ffffff;\" /> </g> `, wQ: svg ` <g style=\"opacity:1; fill:#ffffff; fill-opacity:1; fill-rule:evenodd; stroke:#000000; stroke-width:1.5; stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4; stroke-dasharray:none; stroke-opacity:1;\"> <path d=\"M 9 13 A 2 2 0 1 1 5,13 A 2 2 0 1 1 9 13 z\" transform=\"translate(-1,-1)\" /> <path d=\"M 9 13 A 2 2 0 1 1 5,13 A 2 2 0 1 1 9 13 z\" transform=\"translate(15.5,-5.5)\" /> <path d=\"M 9 13 A 2 2 0 1 1 5,13 A 2 2 0 1 1 9 13 z\" transform=\"translate(32,-1)\" /> <path d=\"M 9 13 A 2 2 0 1 1 5,13 A 2 2 0 1 1 9 13 z\" transform=\"translate(7,-4.5)\" /> <path d=\"M 9 13 A 2 2 0 1 1 5,13 A 2 2 0 1 1 9 13 z\" transform=\"translate(24,-4)\" /> <path d=\"M 9,26 C 17.5,24.5 30,24.5 36,26 L 38,14 L 31,25 L 31,11 L 25.5,24.5 L 22.5,9.5 L 19.5,24.5 L 14,10.5 L 14,25 L 7,14 L 9,26 z \" style=\"stroke-linecap:butt;\" /> <path d=\"M 9,26 C 9,28 10.5,28 11.5,30 C 12.5,31.5 12.5,31 12,33.5 C 10.5,34.5 10.5,36 10.5,36 C 9,37.5 11,38.5 11,38.5 C 17.5,39.5 27.5,39.5 34,38.5 C 34,38.5 35.5,37.5 34,36 C 34,36 34.5,34.5 33,33.5 C 32.5,31 32.5,31.5 33.5,30 C 34.5,28 36,28 36,26 C 27.5,24.5 17.5,24.5 9,26 z \" style=\"stroke-linecap:butt;\" /> <path d=\"M 11.5,30 C 15,29 30,29 33.5,30\" style=\"fill:none;\" /> <path d=\"M 12,33.5 C 18,32.5 27,32.5 33,33.5\" style=\"fill:none;\" /> </g> `, bR: svg ` <g style=\"opacity:1; fill:000000; fill-opacity:1; fill-rule:evenodd; stroke:#000000; stroke-width:1.5; stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4; stroke-dasharray:none; stroke-opacity:1;\"> <path d=\"M 9,39 L 36,39 L 36,36 L 9,36 L 9,39 z \" style=\"stroke-linecap:butt;\" /> <path d=\"M 12.5,32 L 14,29.5 L 31,29.5 L 32.5,32 L 12.5,32 z \" style=\"stroke-linecap:butt;\" /> <path d=\"M 12,36 L 12,32 L 33,32 L 33,36 L 12,36 z \" style=\"stroke-linecap:butt;\" /> <path d=\"M 14,29.5 L 14,16.5 L 31,16.5 L 31,29.5 L 14,29.5 z \" style=\"stroke-linecap:butt;stroke-linejoin:miter;\" /> <path d=\"M 14,16.5 L 11,14 L 34,14 L 31,16.5 L 14,16.5 z \" style=\"stroke-linecap:butt;\" /> <path d=\"M 11,14 L 11,9 L 15,9 L 15,11 L 20,11 L 20,9 L 25,9 L 25,11 L 30,11 L 30,9 L 34,9 L 34,14 L 11,14 z \" style=\"stroke-linecap:butt;\" /> <path d=\"M 12,35.5 L 33,35.5 L 33,35.5\" style=\"fill:none; stroke:#ffffff; stroke-width:1; stroke-linejoin:miter;\" /> <path d=\"M 13,31.5 L 32,31.5\" style=\"fill:none; stroke:#ffffff; stroke-width:1; stroke-linejoin:miter;\" /> <path d=\"M 14,29.5 L 31,29.5\" style=\"fill:none; stroke:#ffffff; stroke-width:1; stroke-linejoin:miter;\" /> <path d=\"M 14,16.5 L 31,16.5\" style=\"fill:none; stroke:#ffffff; stroke-width:1; stroke-linejoin:miter;\" /> <path d=\"M 11,14 L 34,14\" style=\"fill:none; stroke:#ffffff; stroke-width:1; stroke-linejoin:miter;\" /> </g> `, wR: svg ` <g style=\"opacity:1; fill:#ffffff; fill-opacity:1; fill-rule:evenodd; stroke:#000000; stroke-width:1.5; stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4; stroke-dasharray:none; stroke-opacity:1;\"> <path d=\"M 9,39 L 36,39 L 36,36 L 9,36 L 9,39 z \" style=\"stroke-linecap:butt;\" /> <path d=\"M 12,36 L 12,32 L 33,32 L 33,36 L 12,36 z \" style=\"stroke-linecap:butt;\" /> <path d=\"M 11,14 L 11,9 L 15,9 L 15,11 L 20,11 L 20,9 L 25,9 L 25,11 L 30,11 L 30,9 L 34,9 L 34,14\" style=\"stroke-linecap:butt;\" /> <path d=\"M 34,14 L 31,17 L 14,17 L 11,14\" /> <path d=\"M 31,17 L 31,29.5 L 14,29.5 L 14,17\" style=\"stroke-linecap:butt; stroke-linejoin:miter;\" /> <path d=\"M 31,29.5 L 32.5,32 L 12.5,32 L 14,29.5\" /> <path d=\"M 11,14 L 34,14\" style=\"fill:none; stroke:#000000; stroke-linejoin:miter;\" /> </g> `, }"
         }
       ],
       "exports": [
         {
           "kind": "js",
-          "name": "renderWikipediaSVGPiece",
+          "name": "renderPiece",
           "declaration": {
             "name": "renderPiece",
-            "module": "#utils"
+            "module": "dist/utils/wikipedia-pieces-svg.js"
           }
         },
         {
           "kind": "js",
-          "name": "ChessBoard",
+          "name": "pieces",
           "declaration": {
-            "name": "ChessBoard",
-            "module": "dist/chessboard.js"
-          }
-        }
-      ]
-    },
-    {
-      "kind": "javascript-module",
-      "path": "dist/index.js",
-      "declarations": [],
-      "exports": [
-        {
-          "kind": "js",
-          "name": "ChessBoard",
-          "declaration": {
-            "name": "ChessBoard",
-            "module": "dist/index.js"
-          }
-        },
-        {
-          "kind": "js",
-          "name": "default",
-          "declaration": {
-            "name": "ChessBoard",
-            "module": "dist/index.js"
-          }
-        }
-      ]
-    },
-    {
-      "kind": "javascript-module",
-      "path": "dist/types.js",
-      "declarations": [
-        {
-          "kind": "variable",
-          "name": "ChessboardEvents",
-          "description": "Chessboard types."
-        }
-      ],
-      "exports": [
-        {
-          "kind": "js",
-          "name": "ChessboardEvents",
-          "declaration": {
-            "name": "ChessboardEvents",
-            "module": "dist/types.js"
+            "name": "pieces",
+            "module": "dist/utils/wikipedia-pieces-svg.js"
           }
         }
       ]
@@ -2644,461 +3202,6 @@
           "declaration": {
             "name": "pieces",
             "module": "src/utils/wikipedia-pieces-svg.ts"
-          }
-        }
-      ]
-    },
-    {
-      "kind": "javascript-module",
-      "path": "dist/utils/chessboard-styles.js",
-      "declarations": [
-        {
-          "kind": "variable",
-          "name": "styles",
-          "default": "css ` :host { display: block; position: relative; --light-color: #f0d9b5; --dark-color: #b58863; --highlight-color: yellow; } [part~='board'] { border: 2px solid #404040; box-sizing: border-box; display: grid; grid-template-columns: repeat(8, 12.5%); grid-template-rows: repeat(8, 12.5%); } [part~='square'] { position: relative; /* disable any native browser highlighting */ -webkit-touch-callout: none; -webkit-user-select: none; -khtml-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none; } [part~='piece'], .piece-image { width: 100%; height: 100%; z-index: 10; } [part~='spare-pieces'] { display: grid; position: relative; padding: 0 2px; grid-template-columns: repeat(8, 12.5%); } [part~='dragged-piece'] { display: none; position: absolute; } [part~='white'] { background-color: var(--light-color); color: var(--dark-color); } [part~='black'] { background-color: var(--dark-color); color: var(--light-color); } [part~='highlight'] { box-shadow: inset 0 0 3px 3px var(--highlight-color); } [part~='notation'] { cursor: default; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 14px; position: absolute; } [part~='alpha'] { bottom: 1px; right: 3px; } [part~='numeric'] { top: 2px; left: 2px; } `"
-        }
-      ],
-      "exports": [
-        {
-          "kind": "js",
-          "name": "styles",
-          "declaration": {
-            "name": "styles",
-            "module": "dist/utils/chessboard-styles.js"
-          }
-        }
-      ]
-    },
-    {
-      "kind": "javascript-module",
-      "path": "dist/utils/index.js",
-      "declarations": [
-        {
-          "kind": "function",
-          "name": "isString",
-          "parameters": [
-            {
-              "name": "s"
-            }
-          ],
-          "description": "GENERAL UTILITIES."
-        },
-        {
-          "kind": "function",
-          "name": "isFunction",
-          "parameters": [
-            {
-              "name": "f"
-            }
-          ]
-        },
-        {
-          "kind": "function",
-          "name": "isInteger",
-          "parameters": [
-            {
-              "name": "n"
-            }
-          ]
-        },
-        {
-          "kind": "function",
-          "name": "deepCopy",
-          "parameters": [
-            {
-              "name": "thing"
-            }
-          ]
-        },
-        {
-          "kind": "function",
-          "name": "interpolateTemplate",
-          "parameters": [
-            {
-              "name": "str"
-            },
-            {
-              "name": "obj"
-            }
-          ]
-        },
-        {
-          "kind": "variable",
-          "name": "START_FEN",
-          "type": {
-            "text": "string"
-          },
-          "default": "'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR'",
-          "description": "CHESS UTILITIES."
-        },
-        {
-          "kind": "variable",
-          "name": "COLUMNS"
-        },
-        {
-          "kind": "variable",
-          "name": "whitePieces",
-          "type": {
-            "text": "array"
-          },
-          "default": "['wK', 'wQ', 'wR', 'wB', 'wN', 'wP']"
-        },
-        {
-          "kind": "variable",
-          "name": "blackPieces",
-          "type": {
-            "text": "array"
-          },
-          "default": "['bK', 'bQ', 'bR', 'bB', 'bN', 'bP']"
-        },
-        {
-          "kind": "function",
-          "name": "getSquareColor",
-          "parameters": [
-            {
-              "name": "square"
-            }
-          ]
-        },
-        {
-          "kind": "function",
-          "name": "validSquare",
-          "parameters": [
-            {
-              "name": "square"
-            }
-          ]
-        },
-        {
-          "kind": "function",
-          "name": "validMove",
-          "parameters": [
-            {
-              "name": "move"
-            }
-          ]
-        },
-        {
-          "kind": "function",
-          "name": "validPieceCode",
-          "parameters": [
-            {
-              "name": "code"
-            }
-          ]
-        },
-        {
-          "kind": "function",
-          "name": "validFen",
-          "parameters": [
-            {
-              "name": "fen"
-            }
-          ]
-        },
-        {
-          "kind": "function",
-          "name": "validPositionObject",
-          "parameters": [
-            {
-              "name": "pos"
-            }
-          ]
-        },
-        {
-          "kind": "function",
-          "name": "fenToObj",
-          "parameters": [
-            {
-              "name": "fen"
-            }
-          ]
-        },
-        {
-          "kind": "variable",
-          "name": "START_POSITION"
-        },
-        {
-          "kind": "function",
-          "name": "objToFen",
-          "parameters": [
-            {
-              "name": "obj"
-            }
-          ]
-        },
-        {
-          "kind": "function",
-          "name": "normalizePozition",
-          "parameters": [
-            {
-              "name": "position"
-            }
-          ]
-        },
-        {
-          "kind": "function",
-          "name": "findClosestPiece",
-          "parameters": [
-            {
-              "name": "position"
-            },
-            {
-              "name": "piece"
-            },
-            {
-              "name": "square"
-            }
-          ]
-        },
-        {
-          "kind": "function",
-          "name": "calculatePositionFromMoves",
-          "parameters": [
-            {
-              "name": "position"
-            },
-            {
-              "name": "moves"
-            }
-          ]
-        }
-      ],
-      "exports": [
-        {
-          "kind": "js",
-          "name": "pieces",
-          "declaration": {
-            "name": "pieces",
-            "module": "dist/utils/index.js"
-          }
-        },
-        {
-          "kind": "js",
-          "name": "styles",
-          "declaration": {
-            "name": "styles",
-            "module": "dist/utils/index.js"
-          }
-        },
-        {
-          "kind": "js",
-          "name": "renderPiece",
-          "declaration": {
-            "name": "renderPiece",
-            "module": "dist/utils/index.js"
-          }
-        },
-        {
-          "kind": "js",
-          "name": "isString",
-          "declaration": {
-            "name": "isString",
-            "module": "dist/utils/index.js"
-          }
-        },
-        {
-          "kind": "js",
-          "name": "isFunction",
-          "declaration": {
-            "name": "isFunction",
-            "module": "dist/utils/index.js"
-          }
-        },
-        {
-          "kind": "js",
-          "name": "isInteger",
-          "declaration": {
-            "name": "isInteger",
-            "module": "dist/utils/index.js"
-          }
-        },
-        {
-          "kind": "js",
-          "name": "deepCopy",
-          "declaration": {
-            "name": "deepCopy",
-            "module": "dist/utils/index.js"
-          }
-        },
-        {
-          "kind": "js",
-          "name": "interpolateTemplate",
-          "declaration": {
-            "name": "interpolateTemplate",
-            "module": "dist/utils/index.js"
-          }
-        },
-        {
-          "kind": "js",
-          "name": "START_FEN",
-          "declaration": {
-            "name": "START_FEN",
-            "module": "dist/utils/index.js"
-          }
-        },
-        {
-          "kind": "js",
-          "name": "COLUMNS",
-          "declaration": {
-            "name": "COLUMNS",
-            "module": "dist/utils/index.js"
-          }
-        },
-        {
-          "kind": "js",
-          "name": "whitePieces",
-          "declaration": {
-            "name": "whitePieces",
-            "module": "dist/utils/index.js"
-          }
-        },
-        {
-          "kind": "js",
-          "name": "blackPieces",
-          "declaration": {
-            "name": "blackPieces",
-            "module": "dist/utils/index.js"
-          }
-        },
-        {
-          "kind": "js",
-          "name": "getSquareColor",
-          "declaration": {
-            "name": "getSquareColor",
-            "module": "dist/utils/index.js"
-          }
-        },
-        {
-          "kind": "js",
-          "name": "validSquare",
-          "declaration": {
-            "name": "validSquare",
-            "module": "dist/utils/index.js"
-          }
-        },
-        {
-          "kind": "js",
-          "name": "validMove",
-          "declaration": {
-            "name": "validMove",
-            "module": "dist/utils/index.js"
-          }
-        },
-        {
-          "kind": "js",
-          "name": "validPieceCode",
-          "declaration": {
-            "name": "validPieceCode",
-            "module": "dist/utils/index.js"
-          }
-        },
-        {
-          "kind": "js",
-          "name": "validFen",
-          "declaration": {
-            "name": "validFen",
-            "module": "dist/utils/index.js"
-          }
-        },
-        {
-          "kind": "js",
-          "name": "validPositionObject",
-          "declaration": {
-            "name": "validPositionObject",
-            "module": "dist/utils/index.js"
-          }
-        },
-        {
-          "kind": "js",
-          "name": "fenToObj",
-          "declaration": {
-            "name": "fenToObj",
-            "module": "dist/utils/index.js"
-          }
-        },
-        {
-          "kind": "js",
-          "name": "START_POSITION",
-          "declaration": {
-            "name": "START_POSITION",
-            "module": "dist/utils/index.js"
-          }
-        },
-        {
-          "kind": "js",
-          "name": "objToFen",
-          "declaration": {
-            "name": "objToFen",
-            "module": "dist/utils/index.js"
-          }
-        },
-        {
-          "kind": "js",
-          "name": "normalizePozition",
-          "declaration": {
-            "name": "normalizePozition",
-            "module": "dist/utils/index.js"
-          }
-        },
-        {
-          "kind": "js",
-          "name": "findClosestPiece",
-          "declaration": {
-            "name": "findClosestPiece",
-            "module": "dist/utils/index.js"
-          }
-        },
-        {
-          "kind": "js",
-          "name": "calculatePositionFromMoves",
-          "declaration": {
-            "name": "calculatePositionFromMoves",
-            "module": "dist/utils/index.js"
-          }
-        }
-      ]
-    },
-    {
-      "kind": "javascript-module",
-      "path": "dist/utils/wikipedia-pieces-svg.js",
-      "declarations": [
-        {
-          "kind": "function",
-          "name": "renderPiece",
-          "parameters": [
-            {
-              "name": "piece"
-            },
-            {
-              "name": "container"
-            }
-          ]
-        },
-        {
-          "kind": "variable",
-          "name": "pieces",
-          "type": {
-            "text": "object"
-          },
-          "default": "{ bB: svg ` <g style=\"opacity:1; fill:none; fill-rule:evenodd; fill-opacity:1; stroke:#000000; stroke-width:1.5; stroke-linecap:round; stroke-linejoin:round; stroke-miterlimit:4; stroke-dasharray:none; stroke-opacity:1;\"> <g style=\"fill:#000000; stroke:#000000; stroke-linecap:butt;\"> <path d=\"M 9,36 C 12.39,35.03 19.11,36.43 22.5,34 C 25.89,36.43 32.61,35.03 36,36 C 36,36 37.65,36.54 39,38 C 38.32,38.97 37.35,38.99 36,38.5 C 32.61,37.53 25.89,38.96 22.5,37.5 C 19.11,38.96 12.39,37.53 9,38.5 C 7.646,38.99 6.677,38.97 6,38 C 7.354,36.06 9,36 9,36 z\" /> <path d=\"M 15,32 C 17.5,34.5 27.5,34.5 30,32 C 30.5,30.5 30,30 30,30 C 30,27.5 27.5,26 27.5,26 C 33,24.5 33.5,14.5 22.5,10.5 C 11.5,14.5 12,24.5 17.5,26 C 17.5,26 15,27.5 15,30 C 15,30 14.5,30.5 15,32 z\" /> <path d=\"M 25 8 A 2.5 2.5 0 1 1 20,8 A 2.5 2.5 0 1 1 25 8 z\" /> </g> <path d=\"M 17.5,26 L 27.5,26 M 15,30 L 30,30 M 22.5,15.5 L 22.5,20.5 M 20,18 L 25,18\" style=\"fill:none; stroke:#ffffff; stroke-linejoin:miter;\" /> </g> `, wB: svg ` <g style=\"opacity:1; fill:none; fill-rule:evenodd; fill-opacity:1; stroke:#000000; stroke-width:1.5; stroke-linecap:round; stroke-linejoin:round; stroke-miterlimit:4; stroke-dasharray:none; stroke-opacity:1;\"> <g style=\"fill:#ffffff; stroke:#000000; stroke-linecap:butt;\"> <path d=\"M 9,36 C 12.39,35.03 19.11,36.43 22.5,34 C 25.89,36.43 32.61,35.03 36,36 C 36,36 37.65,36.54 39,38 C 38.32,38.97 37.35,38.99 36,38.5 C 32.61,37.53 25.89,38.96 22.5,37.5 C 19.11,38.96 12.39,37.53 9,38.5 C 7.646,38.99 6.677,38.97 6,38 C 7.354,36.06 9,36 9,36 z\" /> <path d=\"M 15,32 C 17.5,34.5 27.5,34.5 30,32 C 30.5,30.5 30,30 30,30 C 30,27.5 27.5,26 27.5,26 C 33,24.5 33.5,14.5 22.5,10.5 C 11.5,14.5 12,24.5 17.5,26 C 17.5,26 15,27.5 15,30 C 15,30 14.5,30.5 15,32 z\" /> <path d=\"M 25 8 A 2.5 2.5 0 1 1 20,8 A 2.5 2.5 0 1 1 25 8 z\" /> </g> <path d=\"M 17.5,26 L 27.5,26 M 15,30 L 30,30 M 22.5,15.5 L 22.5,20.5 M 20,18 L 25,18\" style=\"fill:none; stroke:#000000; stroke-linejoin:miter;\" /> </g> `, bK: svg ` <g style=\"fill:none; fill-opacity:1; fill-rule:evenodd; stroke:#000000; stroke-width:1.5; stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4; stroke-dasharray:none; stroke-opacity:1;\"> <path d=\"M 22.5,11.63 L 22.5,6\" style=\"fill:none; stroke:#000000; stroke-linejoin:miter;\" id=\"path6570\" /> <path d=\"M 22.5,25 C 22.5,25 27,17.5 25.5,14.5 C 25.5,14.5 24.5,12 22.5,12 C 20.5,12 19.5,14.5 19.5,14.5 C 18,17.5 22.5,25 22.5,25\" style=\"fill:#000000;fill-opacity:1; stroke-linecap:butt; stroke-linejoin:miter;\" /> <path d=\"M 11.5,37 C 17,40.5 27,40.5 32.5,37 L 32.5,30 C 32.5,30 41.5,25.5 38.5,19.5 C 34.5,13 25,16 22.5,23.5 L 22.5,27 L 22.5,23.5 C 19,16 9.5,13 6.5,19.5 C 3.5,25.5 11.5,29.5 11.5,29.5 L 11.5,37 z \" style=\"fill:#000000; stroke:#000000;\" /> <path d=\"M 20,8 L 25,8\" style=\"fill:none; stroke:#000000; stroke-linejoin:miter;\" /> <path d=\"M 32,29.5 C 32,29.5 40.5,25.5 38.03,19.85 C 34.15,14 25,18 22.5,24.5 L 22.51,26.6 L 22.5,24.5 C 20,18 9.906,14 6.997,19.85 C 4.5,25.5 11.85,28.85 11.85,28.85\" style=\"fill:none; stroke:#ffffff;\" /> <path d=\"M 11.5,30 C 17,27 27,27 32.5,30 M 11.5,33.5 C 17,30.5 27,30.5 32.5,33.5 M 11.5,37 C 17,34 27,34 32.5,37\" style=\"fill:none; stroke:#ffffff;\" /> </g> `, wK: svg ` <g style=\"fill:none; fill-opacity:1; fill-rule:evenodd; stroke:#000000; stroke-width:1.5; stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4; stroke-dasharray:none; stroke-opacity:1;\"> <path d=\"M 22.5,11.63 L 22.5,6\" style=\"fill:none; stroke:#000000; stroke-linejoin:miter;\" /> <path d=\"M 20,8 L 25,8\" style=\"fill:none; stroke:#000000; stroke-linejoin:miter;\" /> <path d=\"M 22.5,25 C 22.5,25 27,17.5 25.5,14.5 C 25.5,14.5 24.5,12 22.5,12 C 20.5,12 19.5,14.5 19.5,14.5 C 18,17.5 22.5,25 22.5,25\" style=\"fill:#ffffff; stroke:#000000; stroke-linecap:butt; stroke-linejoin:miter;\" /> <path d=\"M 11.5,37 C 17,40.5 27,40.5 32.5,37 L 32.5,30 C 32.5,30 41.5,25.5 38.5,19.5 C 34.5,13 25,16 22.5,23.5 L 22.5,27 L 22.5,23.5 C 19,16 9.5,13 6.5,19.5 C 3.5,25.5 11.5,29.5 11.5,29.5 L 11.5,37 z \" style=\"fill:#ffffff; stroke:#000000;\" /> <path d=\"M 11.5,30 C 17,27 27,27 32.5,30\" style=\"fill:none; stroke:#000000;\" /> <path d=\"M 11.5,33.5 C 17,30.5 27,30.5 32.5,33.5\" style=\"fill:none; stroke:#000000;\" /> <path d=\"M 11.5,37 C 17,34 27,34 32.5,37\" style=\"fill:none; stroke:#000000;\" /> </g> `, bN: svg ` <g style=\"opacity:1; fill:none; fill-opacity:1; fill-rule:evenodd; stroke:#000000; stroke-width:1.5; stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4; stroke-dasharray:none; stroke-opacity:1;\"> <path d=\"M 22,10 C 32.5,11 38.5,18 38,39 L 15,39 C 15,30 25,32.5 23,18\" style=\"fill:#000000; stroke:#000000;\" /> <path d=\"M 24,18 C 24.38,20.91 18.45,25.37 16,27 C 13,29 13.18,31.34 11,31 C 9.958,30.06 12.41,27.96 11,28 C 10,28 11.19,29.23 10,30 C 9,30 5.997,31 6,26 C 6,24 12,14 12,14 C 12,14 13.89,12.1 14,10.5 C 13.27,9.506 13.5,8.5 13.5,7.5 C 14.5,6.5 16.5,10 16.5,10 L 18.5,10 C 18.5,10 19.28,8.008 21,7 C 22,7 22,10 22,10\" style=\"fill:#000000; stroke:#000000;\" /> <path d=\"M 9.5 25.5 A 0.5 0.5 0 1 1 8.5,25.5 A 0.5 0.5 0 1 1 9.5 25.5 z\" style=\"fill:#ffffff; stroke:#ffffff;\" /> <path d=\"M 15 15.5 A 0.5 1.5 0 1 1 14,15.5 A 0.5 1.5 0 1 1 15 15.5 z\" transform=\"matrix(0.866,0.5,-0.5,0.866,9.693,-5.173)\" style=\"fill:#ffffff; stroke:#ffffff;\" /> <path d=\"M 24.55,10.4 L 24.1,11.85 L 24.6,12 C 27.75,13 30.25,14.49 32.5,18.75 C 34.75,23.01 35.75,29.06 35.25,39 L 35.2,39.5 L 37.45,39.5 L 37.5,39 C 38,28.94 36.62,22.15 34.25,17.66 C 31.88,13.17 28.46,11.02 25.06,10.5 L 24.55,10.4 z \" style=\"fill:#ffffff; stroke:none;\" /> </g> `, wN: svg ` <g style=\"opacity:1; fill:none; fill-opacity:1; fill-rule:evenodd; stroke:#000000; stroke-width:1.5; stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4; stroke-dasharray:none; stroke-opacity:1;\"> <path d=\"M 22,10 C 32.5,11 38.5,18 38,39 L 15,39 C 15,30 25,32.5 23,18\" style=\"fill:#ffffff; stroke:#000000;\" /> <path d=\"M 24,18 C 24.38,20.91 18.45,25.37 16,27 C 13,29 13.18,31.34 11,31 C 9.958,30.06 12.41,27.96 11,28 C 10,28 11.19,29.23 10,30 C 9,30 5.997,31 6,26 C 6,24 12,14 12,14 C 12,14 13.89,12.1 14,10.5 C 13.27,9.506 13.5,8.5 13.5,7.5 C 14.5,6.5 16.5,10 16.5,10 L 18.5,10 C 18.5,10 19.28,8.008 21,7 C 22,7 22,10 22,10\" style=\"fill:#ffffff; stroke:#000000;\" /> <path d=\"M 9.5 25.5 A 0.5 0.5 0 1 1 8.5,25.5 A 0.5 0.5 0 1 1 9.5 25.5 z\" style=\"fill:#000000; stroke:#000000;\" /> <path d=\"M 15 15.5 A 0.5 1.5 0 1 1 14,15.5 A 0.5 1.5 0 1 1 15 15.5 z\" transform=\"matrix(0.866,0.5,-0.5,0.866,9.693,-5.173)\" style=\"fill:#000000; stroke:#000000;\" /> </g> `, bP: svg ` <path d=\"M 22,9 C 19.79,9 18,10.79 18,13 C 18,13.89 18.29,14.71 18.78,15.38 C 16.83,16.5 15.5,18.59 15.5,21 C 15.5,23.03 16.44,24.84 17.91,26.03 C 14.91,27.09 10.5,31.58 10.5,39.5 L 33.5,39.5 C 33.5,31.58 29.09,27.09 26.09,26.03 C 27.56,24.84 28.5,23.03 28.5,21 C 28.5,18.59 27.17,16.5 25.22,15.38 C 25.71,14.71 26,13.89 26,13 C 26,10.79 24.21,9 22,9 z \" style=\"opacity:1; fill:#000000; fill-opacity:1; fill-rule:nonzero; stroke:#000000; stroke-width:1.5; stroke-linecap:round; stroke-linejoin:miter; stroke-miterlimit:4; stroke-dasharray:none; stroke-opacity:1;\" /> `, wP: svg ` <path d=\"M 22,9 C 19.79,9 18,10.79 18,13 C 18,13.89 18.29,14.71 18.78,15.38 C 16.83,16.5 15.5,18.59 15.5,21 C 15.5,23.03 16.44,24.84 17.91,26.03 C 14.91,27.09 10.5,31.58 10.5,39.5 L 33.5,39.5 C 33.5,31.58 29.09,27.09 26.09,26.03 C 27.56,24.84 28.5,23.03 28.5,21 C 28.5,18.59 27.17,16.5 25.22,15.38 C 25.71,14.71 26,13.89 26,13 C 26,10.79 24.21,9 22,9 z \" style=\"opacity:1; fill:#ffffff; fill-opacity:1; fill-rule:nonzero; stroke:#000000; stroke-width:1.5; stroke-linecap:round; stroke-linejoin:miter; stroke-miterlimit:4; stroke-dasharray:none; stroke-opacity:1;\" /> `, bQ: svg ` <g style=\"opacity:1; fill:000000; fill-opacity:1; fill-rule:evenodd; stroke:#000000; stroke-width:1.5; stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4; stroke-dasharray:none; stroke-opacity:1;\"> <g style=\"fill:#000000; stroke:none;\"> <circle cx=\"6\" cy=\"12\" r=\"2.75\" /> <circle cx=\"14\" cy=\"9\" r=\"2.75\" /> <circle cx=\"22.5\" cy=\"8\" r=\"2.75\" /> <circle cx=\"31\" cy=\"9\" r=\"2.75\" /> <circle cx=\"39\" cy=\"12\" r=\"2.75\" /> </g> <path d=\"M 9,26 C 17.5,24.5 30,24.5 36,26 L 38.5,13.5 L 31,25 L 30.7,10.9 L 25.5,24.5 L 22.5,10 L 19.5,24.5 L 14.3,10.9 L 14,25 L 6.5,13.5 L 9,26 z\" style=\"stroke-linecap:butt; stroke:#000000;\" /> <path d=\"M 9,26 C 9,28 10.5,28 11.5,30 C 12.5,31.5 12.5,31 12,33.5 C 10.5,34.5 10.5,36 10.5,36 C 9,37.5 11,38.5 11,38.5 C 17.5,39.5 27.5,39.5 34,38.5 C 34,38.5 35.5,37.5 34,36 C 34,36 34.5,34.5 33,33.5 C 32.5,31 32.5,31.5 33.5,30 C 34.5,28 36,28 36,26 C 27.5,24.5 17.5,24.5 9,26 z\" style=\"stroke-linecap:butt;\" /> <path d=\"M 11,38.5 A 35,35 1 0 0 34,38.5\" style=\"fill:none; stroke:#000000; stroke-linecap:butt;\" /> <path d=\"M 11,29 A 35,35 1 0 1 34,29\" style=\"fill:none; stroke:#ffffff;\" /> <path d=\"M 12.5,31.5 L 32.5,31.5\" style=\"fill:none; stroke:#ffffff;\" /> <path d=\"M 11.5,34.5 A 35,35 1 0 0 33.5,34.5\" style=\"fill:none; stroke:#ffffff;\" /> <path d=\"M 10.5,37.5 A 35,35 1 0 0 34.5,37.5\" style=\"fill:none; stroke:#ffffff;\" /> </g> `, wQ: svg ` <g style=\"opacity:1; fill:#ffffff; fill-opacity:1; fill-rule:evenodd; stroke:#000000; stroke-width:1.5; stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4; stroke-dasharray:none; stroke-opacity:1;\"> <path d=\"M 9 13 A 2 2 0 1 1 5,13 A 2 2 0 1 1 9 13 z\" transform=\"translate(-1,-1)\" /> <path d=\"M 9 13 A 2 2 0 1 1 5,13 A 2 2 0 1 1 9 13 z\" transform=\"translate(15.5,-5.5)\" /> <path d=\"M 9 13 A 2 2 0 1 1 5,13 A 2 2 0 1 1 9 13 z\" transform=\"translate(32,-1)\" /> <path d=\"M 9 13 A 2 2 0 1 1 5,13 A 2 2 0 1 1 9 13 z\" transform=\"translate(7,-4.5)\" /> <path d=\"M 9 13 A 2 2 0 1 1 5,13 A 2 2 0 1 1 9 13 z\" transform=\"translate(24,-4)\" /> <path d=\"M 9,26 C 17.5,24.5 30,24.5 36,26 L 38,14 L 31,25 L 31,11 L 25.5,24.5 L 22.5,9.5 L 19.5,24.5 L 14,10.5 L 14,25 L 7,14 L 9,26 z \" style=\"stroke-linecap:butt;\" /> <path d=\"M 9,26 C 9,28 10.5,28 11.5,30 C 12.5,31.5 12.5,31 12,33.5 C 10.5,34.5 10.5,36 10.5,36 C 9,37.5 11,38.5 11,38.5 C 17.5,39.5 27.5,39.5 34,38.5 C 34,38.5 35.5,37.5 34,36 C 34,36 34.5,34.5 33,33.5 C 32.5,31 32.5,31.5 33.5,30 C 34.5,28 36,28 36,26 C 27.5,24.5 17.5,24.5 9,26 z \" style=\"stroke-linecap:butt;\" /> <path d=\"M 11.5,30 C 15,29 30,29 33.5,30\" style=\"fill:none;\" /> <path d=\"M 12,33.5 C 18,32.5 27,32.5 33,33.5\" style=\"fill:none;\" /> </g> `, bR: svg ` <g style=\"opacity:1; fill:000000; fill-opacity:1; fill-rule:evenodd; stroke:#000000; stroke-width:1.5; stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4; stroke-dasharray:none; stroke-opacity:1;\"> <path d=\"M 9,39 L 36,39 L 36,36 L 9,36 L 9,39 z \" style=\"stroke-linecap:butt;\" /> <path d=\"M 12.5,32 L 14,29.5 L 31,29.5 L 32.5,32 L 12.5,32 z \" style=\"stroke-linecap:butt;\" /> <path d=\"M 12,36 L 12,32 L 33,32 L 33,36 L 12,36 z \" style=\"stroke-linecap:butt;\" /> <path d=\"M 14,29.5 L 14,16.5 L 31,16.5 L 31,29.5 L 14,29.5 z \" style=\"stroke-linecap:butt;stroke-linejoin:miter;\" /> <path d=\"M 14,16.5 L 11,14 L 34,14 L 31,16.5 L 14,16.5 z \" style=\"stroke-linecap:butt;\" /> <path d=\"M 11,14 L 11,9 L 15,9 L 15,11 L 20,11 L 20,9 L 25,9 L 25,11 L 30,11 L 30,9 L 34,9 L 34,14 L 11,14 z \" style=\"stroke-linecap:butt;\" /> <path d=\"M 12,35.5 L 33,35.5 L 33,35.5\" style=\"fill:none; stroke:#ffffff; stroke-width:1; stroke-linejoin:miter;\" /> <path d=\"M 13,31.5 L 32,31.5\" style=\"fill:none; stroke:#ffffff; stroke-width:1; stroke-linejoin:miter;\" /> <path d=\"M 14,29.5 L 31,29.5\" style=\"fill:none; stroke:#ffffff; stroke-width:1; stroke-linejoin:miter;\" /> <path d=\"M 14,16.5 L 31,16.5\" style=\"fill:none; stroke:#ffffff; stroke-width:1; stroke-linejoin:miter;\" /> <path d=\"M 11,14 L 34,14\" style=\"fill:none; stroke:#ffffff; stroke-width:1; stroke-linejoin:miter;\" /> </g> `, wR: svg ` <g style=\"opacity:1; fill:#ffffff; fill-opacity:1; fill-rule:evenodd; stroke:#000000; stroke-width:1.5; stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4; stroke-dasharray:none; stroke-opacity:1;\"> <path d=\"M 9,39 L 36,39 L 36,36 L 9,36 L 9,39 z \" style=\"stroke-linecap:butt;\" /> <path d=\"M 12,36 L 12,32 L 33,32 L 33,36 L 12,36 z \" style=\"stroke-linecap:butt;\" /> <path d=\"M 11,14 L 11,9 L 15,9 L 15,11 L 20,11 L 20,9 L 25,9 L 25,11 L 30,11 L 30,9 L 34,9 L 34,14\" style=\"stroke-linecap:butt;\" /> <path d=\"M 34,14 L 31,17 L 14,17 L 11,14\" /> <path d=\"M 31,17 L 31,29.5 L 14,29.5 L 14,17\" style=\"stroke-linecap:butt; stroke-linejoin:miter;\" /> <path d=\"M 31,29.5 L 32.5,32 L 12.5,32 L 14,29.5\" /> <path d=\"M 11,14 L 34,14\" style=\"fill:none; stroke:#000000; stroke-linejoin:miter;\" /> </g> `, }"
-        }
-      ],
-      "exports": [
-        {
-          "kind": "js",
-          "name": "renderPiece",
-          "declaration": {
-            "name": "renderPiece",
-            "module": "dist/utils/wikipedia-pieces-svg.js"
-          }
-        },
-        {
-          "kind": "js",
-          "name": "pieces",
-          "declaration": {
-            "name": "pieces",
-            "module": "dist/utils/wikipedia-pieces-svg.js"
           }
         }
       ]
