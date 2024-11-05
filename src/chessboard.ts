@@ -55,12 +55,14 @@ import { presetColors } from './utils/chessboard-styles'
 // Constants
 // ---------------------------------------------------------------------------
 
-// default animation speeds
+// Default animation speeds.
 const DEFAULT_APPEAR_SPEED = 200
 const DEFAULT_MOVE_SPEED = 200
-const DEFAULT_SNAPBACK_SPEED = 60
-const DEFAULT_SNAP_SPEED = 30
+const DEFAULT_SNAPBACK_SPEED = 100
+const DEFAULT_SNAP_SPEED = 50
 const DEFAULT_TRASH_SPEED = 100
+/** Time threshold in seconds below which the player is considered to have low time remaining. */
+const LOW_TIME = 10
 
 // ---------------------------------------------------------------------------
 // Predicates
@@ -106,10 +108,22 @@ const speedToMS = (speed: AnimationSpeed) => {
     if (typeof speed === 'number') {
         return speed
     }
+    if (speed === 'snap') {
+        return 50
+    }
+    if (speed === 'veryfast') {
+        return 100
+    }
     if (speed === 'fast') {
         return 200
     }
+    if (speed === 'regular') {
+        return 300
+    }
     if (speed === 'slow') {
+        return 400
+    }
+    if (speed === 'veryslow') {
         return 600
     }
     return parseInt(speed, 10)
@@ -243,6 +257,7 @@ export type RenderPieceFunction = (
  * @csspart square - A square on the board.
  * @csspart piece - A chess piece.
  * @csspart spare-pieces - The spare piece container.
+ * @csspart player-details - Container with player details.
  * @csspart dragged-piece - The currently dragged piece.
  * @csspart white - A white square.
  * @csspart black - A black square.
@@ -345,6 +360,17 @@ export class ChessBoard extends LitElement {
     angledArrows: StraightArrow[] = []
 
     /**
+     * Animation speed for when pieces appear on a square.
+     *
+     * Note that the "appear" animation only occurs when `sparePieces` is `false`.
+     * @default 'fast'
+     */
+    @property({
+        attribute: 'appear-speed',
+    })
+    appearSpeed: AnimationSpeed = DEFAULT_APPEAR_SPEED
+
+    /**
      * List of board squares that contain a piece that are available to the user. List can be continuous or delimited.
      * Only pieces on this list can be interacted with and they will have the 'grab' cursor icon when hovered.
      * 
@@ -355,7 +381,7 @@ export class ChessBoard extends LitElement {
     availableBoardPieces: string | null = null
 
     /**
-     * TODO: List of spare pieces that are available to the user. List can be continuous or delimited.
+     * List of spare pieces that are available to the user. List can be continuous or delimited.
      * Only the spare pieces on this list can be interacted with and dragged to the board.
      * 
      * Null means that all spare pieces are available.
@@ -363,6 +389,37 @@ export class ChessBoard extends LitElement {
      */
     @property({ attribute: 'available-spare-pieces', type: String })
     availableSparePieces: string | null = null
+
+    /**
+     * Name of the black player.
+     */
+    @property({ attribute: 'black-name', type: String })
+    blackName: string | null = null
+
+    /**
+     * Rating of the black player.
+     */
+    @property({ attribute: 'black-rating', type: String })
+    blackRating: string | null = null
+
+    /**
+     * Time left for black player in seconds. This will be formatted in separate minutes, seconds and second fractions
+     * for time display. For freely formatted time display, use the `blackTime` property instead.
+     */
+    @property({ attribute: 'black-seconds', type: Number })
+    blackSeconds: number | null = null
+
+    /**
+     * Time left for black player as a formatted string. Ignored if `blackSeconds` is set.
+     */
+    @property({ attribute: 'black-time', type: String })
+    blackTime: string | null = null
+
+    /**
+     * Title of the black player.
+     */
+    @property({ attribute: 'black-title', type: String })
+    blackTitle: string | null = null
 
     /**
      * Square codes with associated color masks to add to them.
@@ -398,6 +455,19 @@ export class ChessBoard extends LitElement {
         type: Array,
     })
     colorSquares: { color: string, square: BoardSquare }[] = []
+
+    /**
+     * If `true`, the time remaining for the player in turn will count down.
+     * @default false
+     */
+    @property({
+        attribute: 'countdown',
+        type: Boolean,
+    })
+    countdown = false
+
+    @property({ type: Number })
+    countdownTimeout = 0
 
     /**
      * If `true`, pieces on the board are draggable to other squares.
@@ -477,6 +547,7 @@ export class ChessBoard extends LitElement {
 
     /**
      * Animation speed for when pieces that were dropped outside the board return to their original square.
+     * @default 'veryfast'
      */
     @property({
         attribute: 'snapback-speed',
@@ -485,64 +556,12 @@ export class ChessBoard extends LitElement {
 
     /**
      * Animation speed for when pieces \"snap\" to a square when dropped.
+     * @default 'snap'
      */
     @property({
         attribute: 'snap-speed',
     })
     snapSpeed: AnimationSpeed = DEFAULT_SNAP_SPEED
-
-    /**
-     * A list of straight arrows to draw on the board.
-     * @default null
-     */
-    @property({
-        attribute: 'straight-arrows',
-        converter: (value: string | null) => {
-            if (!value) {
-                return null
-            }
-            const arrows = []
-            const arrowDescriptions = value.split(';')
-            for (const desc of arrowDescriptions) {
-                const params = desc.trim().split(/[,\-:\s]/)
-                if (params.length !== 3) {
-                    continue
-                }
-                arrows.push(new StraightArrow(params[0] as BoardSquare, params[1] as BoardSquare, params[2]))
-            }
-            return arrows
-        },
-        type: Array,
-    })
-    straightArrows: StraightArrow[] = []
-
-    /**
-     * If `true`, more pieces of a kind can be added to the board than is allowed by the rules.
-     * @default false
-     */
-    @property({
-        attribute: 'superfluous-pieces',
-        type: Boolean,
-    })
-    superfluousPieces = false
-
-    /**
-     * Animation speed for when pieces are removed.
-     */
-    @property({
-        attribute: 'trash-speed',
-    })
-    trashSpeed: AnimationSpeed = DEFAULT_TRASH_SPEED
-
-    /**
-     * Animation speed for when pieces appear on a square.
-     *
-     * Note that the "appear" animation only occurs when `sparePieces` is `false`.
-     */
-    @property({
-        attribute: 'appear-speed',
-    })
-    appearSpeed: AnimationSpeed = DEFAULT_APPEAR_SPEED
 
     /**
      * If `true`, the board will have spare pieces that can be dropped onto the board. If `sparePieces` is set to
@@ -589,6 +608,87 @@ export class ChessBoard extends LitElement {
     })
     squareMarkers: SquareMarker[] = []
 
+    /**
+     * A list of straight arrows to draw on the board.
+     */
+    @property({
+        attribute: 'straight-arrows',
+        converter: (value: string | null) => {
+            if (!value) {
+                return null
+            }
+            const arrows = []
+            const arrowDescriptions = value.split(';')
+            for (const desc of arrowDescriptions) {
+                const params = desc.trim().split(/[,\-:\s]/)
+                if (params.length !== 3) {
+                    continue
+                }
+                arrows.push(new StraightArrow(params[0] as BoardSquare, params[1] as BoardSquare, params[2]))
+            }
+            return arrows
+        },
+        type: Array,
+    })
+    straightArrows: StraightArrow[] = []
+
+    /**
+     * If `true`, more pieces of a kind can be added to the board than is allowed by the rules.
+     * @default false
+     */
+    @property({
+        attribute: 'superfluous-pieces',
+        type: Boolean,
+    })
+    superfluousPieces = false
+
+    /**
+     * Animation speed for when pieces are removed.
+     * @default 'veryfast'
+     */
+    @property({
+        attribute: 'trash-speed',
+    })
+    trashSpeed: AnimationSpeed = DEFAULT_TRASH_SPEED
+
+    /**
+     * The player in turn. This only affects the appearance of player details and possible time countdown.
+     * Either `black` or `white`.
+     */
+    @property()
+    turn: SquareColor | null = null
+
+    /**
+     * Name of the white player.
+     */
+    @property({ attribute: 'white-name', type: String })
+    whiteName: string | null = null
+
+    /**
+     * Rating of the white player.
+     */
+    @property({ attribute: 'white-rating', type: String })
+    whiteRating: string | null = null
+
+    /**
+     * Time left for white player in seconds. This will be formatted in separate minutes, seconds and second fractions
+     * for time display. For freely formatted time display, use the `whiteTime` property instead.
+     */
+    @property({ attribute: 'white-seconds', type: Number })
+    whiteSeconds: number | null = null
+
+    /**
+     * Time left for white player as a formatted string. Ignored if `whiteSeconds` is set.
+     */
+    @property({ attribute: 'white-time', type: String })
+    whiteTime: string | null = null
+
+    /**
+     * Title of the white player.
+     */
+    @property({ attribute: 'white-title', type: String })
+    whiteTitle: string | null = null
+
     // ---------------------------------------------------------------------------
     // Internal properties and getters.
     // ---------------------------------------------------------------------------
@@ -618,7 +718,8 @@ export class ChessBoard extends LitElement {
         // Note: this isn't cached, but is called during user interactions, so we
         // have a bit of time to use under RAIL guidelines.
         if (this.adjustByHeight && this.parentElement?.style.height) {
-            return this.parentElement.offsetHeight / (this.sparePieces ? 10 : 8)
+            const hasExtraRows = this.sparePieces || this.blackName || this.whiteName
+            return this.parentElement.offsetHeight / (hasExtraRows ? 10 : 8)
         } else {
             return this.offsetWidth / 8
         }
@@ -629,7 +730,7 @@ export class ChessBoard extends LitElement {
      * @param parts - List of part names (empty strings are omitted).
      * @returns A CSS part string.
      */
-    #buildParts (...parts: string[]) {
+    #concatParts (...parts: string[]) {
         const nonEmpty = parts.filter(c => c.length > 0)
         return nonEmpty.join(' ')
     }
@@ -657,19 +758,35 @@ export class ChessBoard extends LitElement {
     // -------------------------------------------------------------------------
 
     render () {
-        const styles = {
+        const detailStyles = {
+            height: `${!this.sparePieces && (this.blackName || this.whiteName) ? this.#squareSize : 0}px`,
+            width: `${!this.sparePieces && (this.blackName || this.whiteName) ? 8*this.#squareSize : 0}px`,
+            // Set base font size to adjust label sizes according to board size.
+            fontSize: `${this.#squareSize}px`
+        }
+        const spareStyles = {
             height: `${this.sparePieces ? this.#squareSize : 0}px`,
             width: `${this.sparePieces ? 8*this.#squareSize : 0}px`,
         }
         return html`
             <div part="wrapper">
-                <div part="spare-pieces" style="${styleMap(styles)}">
+                <div part="spare-pieces" style="${styleMap(spareStyles)}">
                     ${this.#renderSparePieces(
                         this.orientation === 'white' ? 'black' : 'white'
                     )}
                 </div>
+                <div part="game-details" style="${styleMap(detailStyles)}">
+                    ${this.#renderGameDetails(
+                        this.orientation === 'white' ? 'black' : 'white'
+                    )}
+                </div>
                 ${this.#renderBoard()}
-                <div part="spare-pieces" style="${styleMap(styles)}">
+                <div part="game-details" style="${styleMap(detailStyles)}">
+                    ${this.#renderGameDetails(
+                        this.orientation === 'white' ? 'white' : 'black'
+                    )}
+                </div>
+                <div part="spare-pieces" style="${styleMap(spareStyles)}">
                     ${this.#renderSparePieces(
                         this.orientation === 'white' ? 'white' : 'black'
                     )}
@@ -685,6 +802,115 @@ export class ChessBoard extends LitElement {
                     })}
                 >
                     ${this.#renderDraggedPiece()}
+                </div>
+            </div>
+        `
+    }
+    /**
+     * Render player details if they are available.
+     * @param color - Color of the player.
+     */
+    #renderGameDetails (color: SquareColor) {
+        // Spare pieces overrides player details.
+        if (this.sparePieces) {
+            return nothing
+        }
+        if (!this.blackName && !this.whiteName) {
+            return nothing
+        }
+        // Only display the timer component if there is something to display.
+        const timerStyles = {
+            display: (
+                (color === 'black' && (this.blackSeconds !== null || this.blackTime !== null)) ||
+                (color === 'white' && (this.whiteSeconds !== null || this.whiteTime !== null))
+            ) ? 'flex' : 'none'
+        }
+        const isLowTime = (color === 'black' && this.blackSeconds !== null && this.blackSeconds < LOW_TIME) ||
+                          (color === 'white' && this.whiteSeconds !== null && this.whiteSeconds < LOW_TIME)
+        const playerTime = color === 'black' ? (this.blackSeconds || 0) : (this.whiteSeconds || 0)
+        const isOutOfTime = playerTime === 0
+        // Only display the second fraction if total time remaining is below threshold.
+        const fractionStyles = {
+            display: isLowTime && !isOutOfTime ? 'block' : 'none'
+        }
+        const playerName = (color === 'black' ? this.blackName : this.whiteName) || 'Unknown'
+        const playerTitle = (color === 'black' ? this.blackTitle : this.whiteTitle) || ''
+        // Display something below the name for consistent visuals, either title or rating.
+        const playerRating = 
+            (color === 'black' ? this.blackRating : this.whiteRating) ||
+            (playerTitle ? '' : 'Unrated')
+        const timeMinutes = Math.floor(playerTime/60)
+        const timeSeconds = Math.floor(playerTime%60).toString().padStart(2, '0')
+        const timeFraction = playerTime.toFixed(1).split('.')[1]
+        // Start possible countdown for the color in turn.
+        if (this.countdown && this.turn === color && playerTime && !this.countdownTimeout) {
+            // Take note of the time of the next exat seconds to keep the clock in sync.
+            const startTime = Date.now()
+            // Add 50 ms to make sure that the displayed second always changes.
+            const secOffset = (playerTime*1000)%1000 + 50
+            let timeCountedDown = secOffset
+            const updateTime = (delta: number) => {
+                const timeRemaining = color === 'black' ? (this.blackSeconds || 0) : (this.whiteSeconds || 0)
+                if (color = 'black') {
+                    (this.blackSeconds as number) -= delta/1000
+                    if ((this.blackSeconds as number) <= 0) {
+                        // Don't go into negative numbers...
+                        this.blackSeconds = 0
+                        return
+                    }
+                } else {
+                    (this.whiteSeconds as number) -= delta/1000
+                    if ((this.whiteSeconds as number) <= 0) {
+                        this.whiteSeconds = 0
+                        return
+                    }
+                }
+                const timeSync = Date.now() - startTime - timeCountedDown
+                // Start faster update interval the seconds before we reach low time range.
+                const tickTarget = timeRemaining > LOW_TIME + 1 ? 100 : 50
+                const nexTick = tickTarget - timeSync
+                this.countdownTimeout = setTimeout(() => updateTime(nexTick), nexTick)
+                timeCountedDown += tickTarget + timeSync
+            }
+            if (this.countdownTimeout) {
+                clearTimeout(this.countdownTimeout)
+            }
+            // Countdown the remaining fraction first.
+            this.countdownTimeout = setTimeout(() => updateTime(secOffset), secOffset)
+        }
+        return html`
+            <div part="${this.#concatParts(
+                'player-details',
+                'player-${color}',
+                color === this.turn ? 'player-turn' : '',
+            )}">
+                <div part="player-name">
+                    ${ playerName }
+                </div>
+                <div part="player-rating">
+                    ${ playerTitle }${ playerTitle && playerRating ? ', ' : '' }
+                    ${ playerRating }
+                </div>
+            </div>
+            <div part="${this.#concatParts(
+                    'player-timer',
+                    'timer-${color}',
+                    isOutOfTime ? 'timer-low' : '',
+                )}"
+                style="${styleMap(timerStyles)}"
+            >
+                <div part="timer-minutes">
+                    ${timeMinutes}
+                </div>
+                :
+                <div part="${this.#concatParts(
+                    'timer-seconds',
+                    isLowTime && !isOutOfTime ? 'timer-low' : ''
+                )}">
+                    ${timeSeconds}
+                </div>
+                <div part="timer-fraction timer-low" style="${styleMap(fractionStyles)}">
+                    .${timeFraction}
                 </div>
             </div>
         `
@@ -721,7 +947,7 @@ export class ChessBoard extends LitElement {
                     return html`
                         <div
                             id="spare-${p}"
-                            part="${this.#buildParts(
+                            part="${this.#concatParts(
                                 'spare-piece',
                                 disabled ? 'disabled' : '',
                             )}"
@@ -834,7 +1060,7 @@ export class ChessBoard extends LitElement {
                     <div
                         id=${squareId(square)}
                         data-square=${square}
-                        part="${this.#buildParts(
+                        part="${this.#concatParts(
                             'square',
                             square,
                             squareColor,

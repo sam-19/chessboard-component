@@ -35,7 +35,7 @@ export type Animation =
             square: BoardSquare
             piece: ChessPiece
         }
-export type AnimationSpeed = 'fast' | 'slow' | number
+export type AnimationSpeed = 'fast' | 'regular' | 'slow' | 'snap' | 'veryfast' | 'veryslow' | number
 export type BoardLocation = BoardSquare | 'spare' | 'offboard'
 export type BoardPosition = BoardPositionObject | 'start' | string
 export type BoardPositionObject = { [square: string]: ChessPiece | undefined }

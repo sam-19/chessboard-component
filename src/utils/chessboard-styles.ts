@@ -52,6 +52,7 @@ export const styles = css`
         --preset-color-purple: rgb(200, 0, 100);
         --preset-color-red: rgb(255, 0, 0);
         --preset-color-yellow: rgb(225, 200, 0);
+        --time-low-color: rgb(175, 0, 0);
     }
 
     [part~='wrapper'] {
@@ -102,6 +103,47 @@ export const styles = css`
         cursor: move;
         cursor: grab;
     }
+
+    [part~='game-details'] {
+        display: flex;
+        flex-direction: row;
+        position: relative;
+        overflow: hidden;
+    }
+        [part~='player-details'] {
+            flex: 1 1 0;
+            font-size: inherit;
+            padding-left: 2px;
+            font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+        }
+            [part~='player-name'] {
+                height: 1.25em;
+                line-height: 1.5em;
+                font-size: 0.5em;
+            }
+            [part~='player-turn'] [part~='player-name'] {
+                font-weight: 700;
+            }
+            [part~='player-rating'] {
+                height: 1.5em;
+                font-size: 0.25em;
+            }
+        [part~='player-timer'] {
+            display: flex;
+            flex-direction: row;
+            font-family: Courier, monospace;
+            font-size: 0.5em;
+            line-height: 2em;
+            padding-right: 2px;
+        }
+            [part~='timer-low'] {
+                font-weight: 700;
+                color: var(--time-low-color);
+            }
+            [part~='timer-fraction'] {
+                font-size: 0.8em;
+                line-height: 2.7em;
+            }
 
     [part~='dragged-piece'] {
         display: none;
