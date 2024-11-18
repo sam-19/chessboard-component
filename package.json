@@ -11,6 +11,13 @@
       "default": "./dist/index.js"
     }
   },
+  "files": [
+    "dist/*",
+    "umd/*.js",
+    "umd/*.LICENSE.txt",
+    "LICENSE",
+    "README.md"
+  ],
   "scripts": {
     "dev": "vite",
     "build": "npm run build:package && npm run build:standalone",
