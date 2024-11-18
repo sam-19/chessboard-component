@@ -13,7 +13,7 @@
   },
   "files": [
     "dist/*",
-    "umd/*.js",
+    "umd/*",
     "umd/*.LICENSE.txt",
     "LICENSE",
     "README.md"
