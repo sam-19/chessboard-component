@@ -61,8 +61,14 @@ export enum ChessboardEvents {
 }
 export type ChessboardEvent = {
     [ChessboardEvents.CHANGE]: ChessboardEventDetail<{
-        oldPosition: BoardPositionObject
-        newPosition: BoardPositionObject
+        old: {
+            fen: string
+            position: BoardPositionObject
+        }
+        new: {
+            fen: string
+            position: BoardPositionObject
+        }
     }>
     [ChessboardEvents.DRAG_MOVE]: ChessboardEventDetail<{
         newLocation: BoardLocation

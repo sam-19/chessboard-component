@@ -1601,8 +1601,9 @@ export class ChessBoard extends LitElement {
     /**
      * Set the board to the given board `position`.
      * @param position - The position to set.
+     * @param playerMove - Is this position change a move made by a player (default true).
      */
-    #setCurrentPosition (position: BoardPositionObject) {
+    #setCurrentPosition (position: BoardPositionObject, playerMove = true) {
         const oldPos = deepCopy(this.#currentPosition)
         const newPos = deepCopy(position)
         const oldFen = objToFen(oldPos)
@@ -1611,21 +1612,29 @@ export class ChessBoard extends LitElement {
         if (oldFen === newFen) {
             return
         }
-        // Fire change event.
-        this.dispatchEvent(
-            new CustomEvent<ChessboardEvent['change']>(
-                'change', 
-                {
-                    bubbles: true,
-                    detail: {
-                        oldPosition: oldPos,
-                        newPosition: newPos,
-                    },
-                }
-            )
-        )
         // Update board state.
         this.#currentPosition = position
+        // Fire change event, wait for animation time if this is a programmatic change.
+        setTimeout(() => {
+            this.dispatchEvent(
+                new CustomEvent<ChessboardEvent['change']>(
+                    'change', 
+                    {
+                        bubbles: true,
+                        detail: {
+                            old: {
+                                fen: oldFen || '',
+                                position: oldPos,
+                            },
+                            new: {
+                                fen: newFen || '',
+                                position: newPos,
+                            },
+                        },
+                    }
+                )
+            )
+        }, playerMove ? 0 : speedToMS(this.moveSpeed))
     }
     /**
      * Perform a 'snapback' action for the given piece, or trash it if it is a spare piece.
