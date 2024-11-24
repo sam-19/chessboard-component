@@ -13,7 +13,8 @@
     "./types": "./dist/types/index.d.ts",
     "./package.json": "./package.json",
     "./dist/types": "./dist/types/index.d.ts",
-    "./umd/chessboard-component.js": "./umd/chessboard-component.js"
+    "./umd/chessboard-component.js": "./umd/chessboard-component.js",
+    "./umd/chessboard-component.umd.cjs": "./umd/chessboard-component.umd.cjs"
   },
   "files": [
     "dist/*",
