@@ -27,8 +27,8 @@
     "dev": "vite",
     "build": "npm run build:package && npm run build:standalone",
     "build:manifest": "node ./node_modules/@custom-elements-manifest/analyzer/cem.js analyze",
-    "build:package": "tsc && vite build --config vite.config.package.ts",
-    "build:standalone": "tsc && vite build --config vite.config.standalone.ts",
+    "build:package": "tsc && node node_modules/tsconfig-replace-paths/dist/commonjs --project tsconfig.json && vite build --config vite.config.package.ts",
+    "build:standalone": "tsc && node node_modules/tsconfig-replace-paths/dist/commonjs --project tsconfig.json && vite build --config vite.config.standalone.ts",
     "prepack": "npm run build",
     "preview": "vite preview",
     "release": "npm publish --access=public"
@@ -39,6 +39,7 @@
   "devDependencies": {
     "@custom-elements-manifest/analyzer": "^0.10.3",
     "@types/node": "^22.7.7",
+    "tsconfig-replace-paths": "^0.0.14",
     "typescript": "^5.5.3",
     "vite": "^5.4.8",
     "vite-plugin-singlefile": "^2.0.2",

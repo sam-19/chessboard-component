@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite'
 import { resolve } from 'path'
+import tsconfigPaths from 'vite-tsconfig-paths'
 import { fileURLToPath, URL } from 'url'
 
 export default defineConfig({
@@ -28,6 +29,9 @@ export default defineConfig({
             target: 'esnext',
         },
     },
+    plugins: [
+        tsconfigPaths(),
+    ],
     define: {
         __INTLIFY_JIT_COMPILATION__: true,
         'process.env': process.env,

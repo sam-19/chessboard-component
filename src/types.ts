@@ -47,7 +47,17 @@ export type BoardSquare = 'a8' | 'b8' | 'c8' | 'd8' | 'e8' | 'f8' | 'g8' | 'h8' 
                           'a3' | 'b3' | 'c3' | 'd3' | 'e3' | 'f3' | 'g3' | 'h3' |
                           'a2' | 'b2' | 'c2' | 'd2' | 'e2' | 'f2' | 'g2' | 'h2' |
                           'a1' | 'b1' | 'c1' | 'd1' | 'e1' | 'f1' | 'g1' | 'h1'
-export type ChessboardEventDetail<T> = T
+export type ChessboardEvent= {
+    [ChessboardEvents.CHANGE]: { detail: ChessboardEventDetail['change'] }
+    [ChessboardEvents.DRAG_MOVE]: { detail: ChessboardEventDetail['drag-move'] }
+    [ChessboardEvents.DRAG_START]: { detail: ChessboardEventDetail['drag-start'] }
+    [ChessboardEvents.DROP]: { detail: ChessboardEventDetail['drop'] }
+    [ChessboardEvents.MOUSEOUT_SQUARE]: { detail: ChessboardEventDetail['mouseout-square'] }
+    [ChessboardEvents.MOUSEOVER_SQUARE]: { detail: ChessboardEventDetail['mouseover-square'] }
+    [ChessboardEvents.MOVE_END]: { detail: ChessboardEventDetail['move-end'] }
+    [ChessboardEvents.SNAPBACK_END]: { detail: ChessboardEventDetail['snapback-end'] }
+    [ChessboardEvents.SNAP_END]: { detail: ChessboardEventDetail['snap-end'] }
+}
 export enum ChessboardEvents {
     CHANGE = 'change',
     DRAG_MOVE = 'drag-move',
@@ -59,8 +69,8 @@ export enum ChessboardEvents {
     SNAPBACK_END = 'snapback-end',
     SNAP_END = 'snap-end',
 }
-export type ChessboardEvent = {
-    [ChessboardEvents.CHANGE]: ChessboardEventDetail<{
+export type ChessboardEventDetail = {
+    [ChessboardEvents.CHANGE]: {
         old: {
             fen: string
             position: BoardPositionObject
@@ -69,22 +79,22 @@ export type ChessboardEvent = {
             fen: string
             position: BoardPositionObject
         }
-    }>
-    [ChessboardEvents.DRAG_MOVE]: ChessboardEventDetail<{
+    }
+    [ChessboardEvents.DRAG_MOVE]: {
         newLocation: BoardLocation
         oldLocation: BoardLocation
         orientation: SquareColor
         piece: ChessPiece
         position: BoardPositionObject
         source: BoardLocation
-    }>
-    [ChessboardEvents.DRAG_START]: ChessboardEventDetail<{
+    }
+    [ChessboardEvents.DRAG_START]: {
         orientation: SquareColor
         piece: ChessPiece
         position: BoardPositionObject
         source: BoardLocation
-    }>
-    [ChessboardEvents.DROP]: ChessboardEventDetail<{
+    }
+    [ChessboardEvents.DROP]: {
         newPosition: BoardPositionObject
         oldPosition: BoardPositionObject
         orientation: SquareColor
@@ -92,34 +102,34 @@ export type ChessboardEvent = {
         setAction (a: Action): void
         source: BoardLocation
         target: BoardLocation
-    }>
-    [ChessboardEvents.MOUSEOUT_SQUARE]: ChessboardEventDetail<{
+    }
+    [ChessboardEvents.MOUSEOUT_SQUARE]: {
         orientation: SquareColor
         piece: ChessPiece | false
         position: BoardPositionObject
         square: BoardSquare
-    }>
-    [ChessboardEvents.MOUSEOVER_SQUARE]: ChessboardEventDetail<{
+    }
+    [ChessboardEvents.MOUSEOVER_SQUARE]: {
         orientation: SquareColor
         piece: ChessPiece | false
         position: BoardPositionObject
         square: BoardSquare
-    }>
-    [ChessboardEvents.MOVE_END]: ChessboardEventDetail<{
+    }
+    [ChessboardEvents.MOVE_END]: {
         oldPosition: BoardPositionObject
         newPosition: BoardPositionObject
-    }>
-    [ChessboardEvents.SNAPBACK_END]: ChessboardEventDetail<{
+    }
+    [ChessboardEvents.SNAPBACK_END]: {
         orientation: SquareColor
         piece: ChessPiece
         position: BoardPositionObject
         square: BoardLocation
-    }>
-    [ChessboardEvents.SNAP_END]: ChessboardEventDetail<{
+    }
+    [ChessboardEvents.SNAP_END]: {
         piece: ChessPiece
         source: BoardLocation
         square: BoardLocation
-    }>
+    }
 }
 export type ChessPiece = 'bB' | 'bK' | 'bN' | 'bP' | 'bQ' | 'bR' | 
                          'wB' | 'wK' | 'wN' | 'wP' | 'wQ' | 'wR' | ''

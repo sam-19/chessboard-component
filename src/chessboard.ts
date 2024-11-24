@@ -33,7 +33,6 @@ import {
     whitePieces,
 } from './utils'
 import { 
-    HighlightStyle,
     type Action,
     type Animation,
     type AnimationSpeed,
@@ -41,10 +40,11 @@ import {
     type BoardPosition,
     type BoardPositionObject,
     type BoardSquare,
-    type ChessboardEvent,
+    type ChessboardEventDetail,
     type ChessPiece,
     type DraggingDragState,
     type DragState,
+    type HighlightStyle,
     type OffBoardAction,
     type SquareColor,
 } from '#types'
@@ -1285,7 +1285,7 @@ export class ChessBoard extends LitElement {
             this.#currentPosition[square]!
         // Dispatch custom event.
         this.dispatchEvent(
-            new CustomEvent<ChessboardEvent['mouseover-square']>(
+            new CustomEvent<ChessboardEventDetail['mouseover-square']>(
                 'mouseover-square',
                 {
                     bubbles: true,
@@ -1316,7 +1316,7 @@ export class ChessBoard extends LitElement {
             this.#currentPosition[square]!
         // Dispatch custom event.
         this.dispatchEvent(
-            new CustomEvent<ChessboardEvent['mouseout-square']>(
+            new CustomEvent<ChessboardEventDetail['mouseout-square']>(
                 'mouseout-square',
                 {
                     bubbles: true,
@@ -1456,7 +1456,7 @@ export class ChessBoard extends LitElement {
                 this.#animations.clear()
                 this.requestUpdate()
                 this.dispatchEvent(
-                    new CustomEvent<ChessboardEvent['move-end']>(
+                    new CustomEvent<ChessboardEventDetail['move-end']>(
                         'move-end',
                         {
                             bubbles: true,
@@ -1533,7 +1533,7 @@ export class ChessBoard extends LitElement {
                 resolve()
                 // Fire the snap-end event.
                 this.dispatchEvent(
-                    new CustomEvent<ChessboardEvent['snap-end']>(
+                    new CustomEvent<ChessboardEventDetail['snap-end']>(
                         'snap-end', 
                         {
                             bubbles: true,
@@ -1617,7 +1617,7 @@ export class ChessBoard extends LitElement {
         // Fire change event, wait for animation time if this is a programmatic change.
         setTimeout(() => {
             this.dispatchEvent(
-                new CustomEvent<ChessboardEvent['change']>(
+                new CustomEvent<ChessboardEventDetail['change']>(
                     'change', 
                     {
                         bubbles: true,
@@ -1665,7 +1665,7 @@ export class ChessBoard extends LitElement {
                 )
                 resolve()
                 this.dispatchEvent(
-                    new CustomEvent<ChessboardEvent['snapback-end']>(
+                    new CustomEvent<ChessboardEventDetail['snapback-end']>(
                         'snapback-end', 
                         {
                             bubbles: true,
@@ -1699,7 +1699,7 @@ export class ChessBoard extends LitElement {
         y: number
     ) {
         // Fire cancalable drag-start event.
-        const event = new CustomEvent<ChessboardEvent['drag-start']>(
+        const event = new CustomEvent<ChessboardEventDetail['drag-start']>(
             'drag-start',
             {
                 bubbles: true,
@@ -1758,7 +1758,7 @@ export class ChessBoard extends LitElement {
         }
         // Dispatch the drop event.
         // Allow listeners to change the drop action using the `setAction` method..
-        const dropEvent = new CustomEvent<ChessboardEvent['drop']>(
+        const dropEvent = new CustomEvent<ChessboardEventDetail['drop']>(
             'drop',
             {
                 bubbles: true,
@@ -1855,7 +1855,7 @@ export class ChessBoard extends LitElement {
         }
         // Dispatch the drag-move event.
         this.dispatchEvent(
-            new CustomEvent<ChessboardEvent['drag-move']>(
+            new CustomEvent<ChessboardEventDetail['drag-move']>(
                 'drag-move',
                 {
                     bubbles: true,
