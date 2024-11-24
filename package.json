@@ -9,7 +9,11 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
-    }
+    },
+    "./types": "./dist/types/index.d.ts",
+    "./package.json": "./package.json",
+    "./dist/types": "./dist/types/index.d.ts",
+    "./umd/chessboard-component.js": "./umd/chessboard-component.js"
   },
   "files": [
     "dist/*",
