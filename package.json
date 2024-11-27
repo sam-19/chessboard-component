@@ -20,12 +20,14 @@
     "dist/*",
     "umd/*",
     "umd/*.LICENSE.txt",
+    "package.json",
+    "custom-elements.json",
     "LICENSE",
     "README.md"
   ],
   "scripts": {
     "dev": "vite",
-    "build": "npm run build:package && npm run build:standalone",
+    "build": "npm run build:package && npm run build:standalone && npm run build:manifest",
     "build:manifest": "node ./node_modules/@custom-elements-manifest/analyzer/cem.js analyze",
     "build:package": "tsc && node node_modules/tsconfig-replace-paths/dist/commonjs --project tsconfig.json && vite build --config vite.config.package.ts",
     "build:standalone": "tsc && node node_modules/tsconfig-replace-paths/dist/commonjs --project tsconfig.json && vite build --config vite.config.standalone.ts",

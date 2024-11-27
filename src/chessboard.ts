@@ -1622,14 +1622,10 @@ export class ChessBoard extends LitElement {
                     {
                         bubbles: true,
                         detail: {
-                            old: {
-                                fen: oldFen || '',
-                                position: oldPos,
-                            },
-                            new: {
-                                fen: newFen || '',
-                                position: newPos,
-                            },
+                            oldFen: oldFen || '',
+                            oldPosition: oldPos,
+                            newFen: newFen || '',
+                            newPosition: newPos,
                         },
                     }
                 )
