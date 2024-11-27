@@ -924,6 +924,14 @@ export class ChessBoard extends LitElement {
             return nothing
         }
         const pieces = color === 'black' ? blackPieces : whitePieces
+        const totalPieces = Object.values(this.position).filter(
+            bp => (color === 'black' ? bp?.startsWith('b') : bp?.startsWith('w'))
+        ).length
+        const bCount = Object.values(this.position).filter(bp => bp === (color === 'black' ? 'bB' : 'wB')).length
+        const nCount = Object.values(this.position).filter(bp => bp === (color === 'black' ? 'bN' : 'wN')).length
+        const pCount = Object.values(this.position).filter(bp => bp === (color === 'black' ? 'bP' : 'wP')).length
+        const qCount = Object.values(this.position).filter(bp => bp === (color === 'black' ? 'bQ' : 'wQ')).length
+        const rCount = Object.values(this.position).filter(bp => bp === (color === 'black' ? 'bR' : 'wR')).length
         // The empty <div>s below are placeholders to get the shelf to line up with the board's grid. Another option
         // would be to try to use the same grid, either with a single container, or subgrid/display:contents when those
         // are available.
@@ -931,13 +939,16 @@ export class ChessBoard extends LitElement {
             <div></div>
             ${pieces.map(
                 (p) => {
+                    const availPieces = 16 - totalPieces
                     const pieceCount = Object.values(this.position).filter(bp => bp === p).length
-                    const availableForKind = p.endsWith('B') ? 2 - pieceCount
-                                           : p.endsWith('K') ? 1 - pieceCount
-                                           : p.endsWith('N') ? 2 - pieceCount
-                                           : p.endsWith('P') ? 8 - pieceCount
-                                           : p.endsWith('Q') ? 1 - pieceCount
-                                           : p.endsWith('R') ? 2 - pieceCount
+                    /** Number of pawns missing from the board = possible promotions. */
+                    const promoCount = 8 - pCount 
+                    const availableForKind = p.endsWith('B') ? Math.min((2 + promoCount) - pieceCount, availPieces)
+                                           : p.endsWith('K') ? Math.min(1 - pieceCount, availPieces)
+                                           : p.endsWith('N') ? Math.min((2 + promoCount) - pieceCount, availPieces)
+                                           : p.endsWith('P') ? Math.min(8 - pieceCount, availPieces)
+                                           : p.endsWith('Q') ? Math.min((1 + promoCount) - pieceCount, availPieces)
+                                           : p.endsWith('R') ? Math.min((2 + promoCount) - pieceCount, availPieces)
                                            : 0
                     const disabled = (availableForKind < 1 || this.superfluousPieces) ||
                                      (
