@@ -161,8 +161,10 @@ export type RenderPieceFunction = (
  *
  * @fires change - Fired when the board position changes
  *         The event's `detail` property has two properties:
- *             * `value`: the new position
- *             * `oldValue`: the old position
+ *             * `newPosition`: the new position
+ *             * `newFen`: FEN for the new position
+ *             * `oldPosition`: the old position
+ *             * `noldFen`: FEN for the old position
  *
  *         **Warning**: do *not* call any position-changing methods in your event
  *         listener or you may cause an infinite loop. BoardPosition-changing methods
