@@ -259,6 +259,8 @@ export type RenderPieceFunction = (
  * @csspart square - A square on the board.
  * @csspart piece - A chess piece.
  * @csspart spare-pieces - The spare piece container.
+ * @csspart spare-piece - A square containing a spare piece.
+ * @csspart spare-padding - An empty square surrounding the spare pieces to center them.
  * @csspart player-details - Container with player details.
  * @csspart dragged-piece - The currently dragged piece.
  * @csspart white - A white square.
@@ -934,7 +936,7 @@ export class ChessBoard extends LitElement {
         // would be to try to use the same grid, either with a single container, or subgrid/display:contents when those
         // are available.
         return html`
-            <div></div>
+            <div part="spare-padding"></div>
             ${pieces.map(
                 (p) => {
                     const availPieces = 16 - totalPieces
@@ -968,7 +970,7 @@ export class ChessBoard extends LitElement {
                     `
                 }
             )}
-            <div></div>
+            <div part="spare-padding"></div>
         `
     }
     /**

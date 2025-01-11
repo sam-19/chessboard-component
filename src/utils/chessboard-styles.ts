@@ -95,7 +95,7 @@ export const styles = css`
     [part~='spare-pieces'] {
         display: grid;
         position: relative;
-        padding: 0 2px;
+        margin: 0 2px;
         grid-template-columns: repeat(8, 12.5%);
     }
     [part~='spare-piece'] .piece-image {
