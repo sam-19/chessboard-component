@@ -1,5 +1,5 @@
 Refactored from works by Chris Oakman and 2019 Justin Fagnani 2019.
-Additions copyright Sampsa Lohi 2024.
+Additions by Sampsa Lohi 2024.
 
 Permission is hereby granted, free of charge, to any person obtaining
 a copy of this software and associated documentation files (the
