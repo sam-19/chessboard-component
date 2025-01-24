@@ -3,7 +3,7 @@
  * Copyright (c) 2019 Justin Fagnani
  * Copyright (c) 2024 Sampsa Lohi
  * Released under the MIT license
- * https://github.com/justinfagnani/chessboard-element/blob/master/LICENSE.md
+ * https://github.com/sam-19/chessboard-component/blob/main/LICENSE.md
  */
 
 import { LitElement, html, nothing, render, AttributePart, noChange } from 'lit'
