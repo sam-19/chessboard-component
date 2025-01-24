@@ -32,7 +32,7 @@ import {
     isValidPositionObject,
     whitePieces,
 } from './utils'
-import { 
+import {
     type Action,
     type Animation,
     type AnimationSpeed,
@@ -377,7 +377,7 @@ export class ChessBoard extends LitElement {
     /**
      * List of board squares that contain a piece that are available to the user. List can be continuous or delimited.
      * Only pieces on this list can be interacted with and they will have the 'grab' cursor icon when hovered.
-     * 
+     *
      * Null means any piece on the board can be moved.
      * @default null
      */
@@ -387,7 +387,7 @@ export class ChessBoard extends LitElement {
     /**
      * List of spare pieces that are available to the user. List can be continuous or delimited.
      * Only the spare pieces on this list can be interacted with and dragged to the board.
-     * 
+     *
      * Null means that all spare pieces are available.
      * @default null
      */
@@ -749,7 +749,7 @@ export class ChessBoard extends LitElement {
     }
 
     /**
-     * Get the HTML element for the give spare `piece`. 
+     * Get the HTML element for the give spare `piece`.
      * @param piece - Piece code.
      * @returns HTML element.
      */
@@ -840,7 +840,7 @@ export class ChessBoard extends LitElement {
         const playerName = (color === 'black' ? this.blackName : this.whiteName) || 'Unknown'
         const playerTitle = (color === 'black' ? this.blackTitle : this.whiteTitle) || ''
         // Display something below the name for consistent visuals, either title or rating.
-        const playerRating = 
+        const playerRating =
             (color === 'black' ? this.blackRating : this.whiteRating) ||
             (playerTitle ? '' : 'Unrated')
         const timeMinutes = Math.floor(playerTime/60)
@@ -928,10 +928,19 @@ export class ChessBoard extends LitElement {
             return nothing
         }
         const pieces = color === 'black' ? blackPieces : whitePieces
+        const c = color === 'black' ? 'b' : 'w'
         const totalPieces = Object.values(this.position).filter(
-            bp => (color === 'black' ? bp?.startsWith('b') : bp?.startsWith('w'))
+            bp => bp?.startsWith(c)
         ).length
-        const pawnCount = Object.values(this.position).filter(bp => bp === (color === 'black' ? 'bP' : 'wP')).length
+        // We need to know pawn and extra officer piece counts to determine the number of possible promotions.
+        const pawnCount = Object.values(this.position).filter(bp => bp === `${c}P`).length
+        const nExtra = {
+            B: Math.max(Object.values(this.position).filter(bp => bp === `${c}B`).length - 2, 0),
+            N: Math.max(Object.values(this.position).filter(bp => bp === `${c}N`).length - 2, 0),
+            Q: Math.max(Object.values(this.position).filter(bp => bp === `${c}Q`).length - 1, 0),
+            R: Math.max(Object.values(this.position).filter(bp => bp === `${c}R`).length - 2, 0),
+        }
+        const nExtraTotal = nExtra.B + nExtra.N + nExtra.Q + nExtra.R
         // The empty <div>s below are placeholders to get the shelf to line up with the board's grid. Another option
         // would be to try to use the same grid, either with a single container, or subgrid/display:contents when those
         // are available.
@@ -942,15 +951,15 @@ export class ChessBoard extends LitElement {
                     const availPieces = 16 - totalPieces
                     const pieceCount = Object.values(this.position).filter(bp => bp === p).length
                     /** Number of pawns missing from the board = possible promotions. */
-                    const promoCount = 8 - pawnCount 
+                    const promoCount = 8 - pawnCount - nExtraTotal + (nExtra[p[1] as 'B' | 'N' | 'Q' | 'R'] || 0)
                     const availableForKind = p.endsWith('B') ? Math.min((2 + promoCount) - pieceCount, availPieces)
                                            : p.endsWith('K') ? Math.min(1 - pieceCount, availPieces)
                                            : p.endsWith('N') ? Math.min((2 + promoCount) - pieceCount, availPieces)
-                                           : p.endsWith('P') ? Math.min(8 - pieceCount, availPieces)
+                                           : p.endsWith('P') ? Math.min(8 - pieceCount - nExtraTotal, availPieces)
                                            : p.endsWith('Q') ? Math.min((1 + promoCount) - pieceCount, availPieces)
                                            : p.endsWith('R') ? Math.min((2 + promoCount) - pieceCount, availPieces)
                                            : 0
-                    const disabled = (availableForKind < 1 || this.superfluousPieces) ||
+                    const disabled = (availableForKind < 1 && !this.superfluousPieces) ||
                                      (
                                         this.availableSparePieces !== null &&
                                         !this.availableSparePieces.toLowerCase().includes(p.toLowerCase())
@@ -1545,7 +1554,7 @@ export class ChessBoard extends LitElement {
                 // Fire the snap-end event.
                 this.dispatchEvent(
                     new CustomEvent<ChessboardEventDetail['snap-end']>(
-                        'snap-end', 
+                        'snap-end',
                         {
                             bubbles: true,
                             detail: {
@@ -1629,7 +1638,7 @@ export class ChessBoard extends LitElement {
         setTimeout(() => {
             this.dispatchEvent(
                 new CustomEvent<ChessboardEventDetail['change']>(
-                    'change', 
+                    'change',
                     {
                         bubbles: true,
                         detail: {
@@ -1673,7 +1682,7 @@ export class ChessBoard extends LitElement {
                 resolve()
                 this.dispatchEvent(
                     new CustomEvent<ChessboardEventDetail['snapback-end']>(
-                        'snapback-end', 
+                        'snapback-end',
                         {
                             bubbles: true,
                             detail: {
