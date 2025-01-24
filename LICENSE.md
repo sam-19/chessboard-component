@@ -1,4 +1,4 @@
-Refactored from works by Chris Oakman and 2019 Justin Fagnani 2019.
+Refactored from works by Chris Oakman 2019 and Justin Fagnani 2019.
 Additions by Sampsa Lohi 2024.
 
 Permission is hereby granted, free of charge, to any person obtaining
