@@ -23,24 +23,13 @@ export const presetColors = {
 }
 
 export const styles = css`
-    :root {
-        font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
-        font-weight: 400;
-
-        color-scheme: light dark;
-
-        font-synthesis: none;
-        text-rendering: optimizeLegibility;
-        -webkit-font-smoothing: antialiased;
-        -moz-osx-font-smoothing: grayscale;
-    }
-    
     :host {
         display: block;
         position: relative;
         --dark-color: #b58863;
         --highlight-color-active: yellow;
         --highlight-color-available: yellowgreen;
+        --highlight-color-check: rgb(225, 0, 0);
         --highlight-color-previous: steelblue;
         --highlight-color-unavailable: gray;
         --light-color: #f0d9b5;
@@ -99,6 +88,10 @@ export const styles = css`
         padding: 0 2px;
         grid-template-columns: repeat(8, 12.5%);
     }
+    [part~='spare-piece'] {
+        /* Dragging must not scroll the page on touch screens. */
+        touch-action: none;
+    }
     [part~='spare-piece'] .piece-image {
         position: static;
         cursor: move;
@@ -149,6 +142,8 @@ export const styles = css`
     [part~='dragged-piece'] {
         display: none;
         position: absolute;
+        /* Let pointer events reach the squares under the dragged piece. */
+        pointer-events: none;
     }
 
     [part~='white'] {
@@ -161,9 +156,14 @@ export const styles = css`
         color: var(--light-color);
     }
 
+    [part~='dragging'], [part~='dragging'] * {
+        cursor: grabbing !important;
+    }
+
     [part~='draggable'] {
         cursor: move;
         cursor: grab;
+        touch-action: none;
     }
     
     [part~='disabled'] .piece-image {
@@ -178,6 +178,9 @@ export const styles = css`
     [part~='highlight-available'] {
         box-shadow: inset 0 0 1px 5px var(--highlight-color-available);
     }
+    [part~='highlight-check'] {
+        box-shadow: inset 0 0 1px 5px var(--highlight-color-check);
+    }
     [part~='highlight-previous'] {
         box-shadow: inset 0 0 1px 5px var(--highlight-color-previous);
     }
@@ -188,7 +191,7 @@ export const styles = css`
     [part~='notation'] {
         cursor: default;
         font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-        font-size: 14px;
+        font-size: inherit;
         position: absolute;
     }
 

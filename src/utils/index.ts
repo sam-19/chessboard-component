@@ -6,23 +6,12 @@
  * https://github.com/justinfagnani/chessboard-element/blob/master/LICENSE.md
  */
 
-import { styles } from './chessboard-styles'
-import { StraightArrow } from './overlays'
-import { pieces, renderPiece } from './wikipedia-pieces-svg'
-export {
-    StraightArrow,
-    pieces,
-    styles,
-    renderPiece,
-}
-import {
-    type ChessPiece,
-    type BoardSquare,
-    type BoardPositionObject,
-    type BoardPosition,
-} from '#types'
-
-const RUN_ASSERTS = true
+import type {
+    ChessPiece,
+    BoardSquare,
+    BoardPositionObject,
+    BoardPosition,
+} from '../types.js'
 
 /**
  * GENERAL UTILITIES.
@@ -41,6 +30,7 @@ export const isString = (s: unknown): s is string => {
  * @param f - Possible function.
  * @returns True if `f` is a function, false otherwise.
  */
+// eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
 export const isFunction = (f: unknown): f is Function => {
     return typeof f === 'function'
 }
@@ -69,20 +59,12 @@ export const interpolateTemplate = (str: string, obj: object): string => {
     for (const [key, value] of Object.entries(obj)) {
         const keyTemplateStr = '{' + key + '}'
         while (str.includes(keyTemplateStr)) {
-            str = str.replace(keyTemplateStr, value)
+            str = str.replace(keyTemplateStr, String(value))
         }
     }
     return str
 }
 
-if (RUN_ASSERTS) {
-    console.assert(interpolateTemplate('abc', {a: 'x'}) === 'abc')
-    console.assert(interpolateTemplate('{a}bc', {}) === '{a}bc')
-    console.assert(interpolateTemplate('{a}bc', {p: 'q'}) === '{a}bc')
-    console.assert(interpolateTemplate('{a}bc', {a: 'x'}) === 'xbc')
-    console.assert(interpolateTemplate('{a}bc{a}bc', {a: 'x'}) === 'xbcxbc')
-    console.assert(interpolateTemplate('{a}{a}{b}', {a: 'x', b: 'y'}) === 'xxy')
-}
 
 /**
  * CHESS UTILITIES.
@@ -112,6 +94,25 @@ export const isValidSquare = (square: unknown): square is BoardSquare => {
 }
 
 /**
+ * Parse all square codes from a list. The list may be delimited or continuous (`'e2 e4'`, `'e2,e4'` or `'e2e4'`).
+ * @param list - List of square codes.
+ * @returns Set of valid lowercase square codes in the list.
+ */
+export const parseSquareList = (list: string) => {
+    return new Set((list.toLowerCase().match(/[a-h][1-8]/g) || []) as BoardSquare[])
+}
+
+/**
+ * Parse all piece codes from a list. The list may be delimited or continuous (`'wP bP'` or `'wPbP'`).
+ * @param list - List of piece codes.
+ * @returns Set of valid piece codes in the list.
+ */
+export const parsePieceList = (list: string) => {
+    const codes = list.match(/[bw][KQRBNP]/gi) || []
+    return new Set(codes.map(c => c[0].toLowerCase() + c[1].toUpperCase()) as ChessPiece[])
+}
+
+/**
  * Check if the given move is valid or not.
  * @param move - Move to check.
  * @returns True if valid, false otherwise.
@@ -130,33 +131,11 @@ export const isValidMove = (move: unknown): move is string => {
     return isValidSquare(squares[0]) && isValidSquare(squares[1])
 }
 
-if (RUN_ASSERTS) {
-    console.assert(isValidSquare('a1'))
-    console.assert(isValidSquare('e2'))
-    console.assert(!isValidSquare('D2'))
-    console.assert(!isValidSquare('g9'))
-    console.assert(!isValidSquare('a'))
-    console.assert(!isValidSquare(true))
-    console.assert(!isValidSquare(null))
-    console.assert(!isValidSquare({}))
-}
 
 export const isValidPieceCode = (code: unknown): code is string => {
     return isString(code) && code.search(/^[bw][KQRNBP]$/) !== -1
 }
 
-if (RUN_ASSERTS) {
-    console.assert(isValidPieceCode('bP'))
-    console.assert(isValidPieceCode('bK'))
-    console.assert(isValidPieceCode('wK'))
-    console.assert(isValidPieceCode('wR'))
-    console.assert(!isValidPieceCode('WR'))
-    console.assert(!isValidPieceCode('Wr'))
-    console.assert(!isValidPieceCode('a'))
-    console.assert(!isValidPieceCode(true))
-    console.assert(!isValidPieceCode(null))
-    console.assert(!isValidPieceCode({}))
-}
 
 const squeezeFenEmptySquares = (fen: string) => {
     return fen
@@ -208,25 +187,6 @@ export const isValidFen = (fen: unknown): fen is string => {
     return true
 }
 
-if (RUN_ASSERTS) {
-    console.assert(isValidFen(START_FEN))
-    console.assert(isValidFen('8/8/8/8/8/8/8/8'))
-    console.assert(
-        isValidFen('r1bqkbnr/pppp1ppp/2n5/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R')
-    )
-    console.assert(
-        isValidFen('3r3r/1p4pp/2nb1k2/pP3p2/8/PB2PN2/p4PPP/R4RK1 b - - 0 1')
-    )
-    console.assert(
-        !isValidFen('3r3z/1p4pp/2nb1k2/pP3p2/8/PB2PN2/p4PPP/R4RK1 b - - 0 1')
-    )
-    console.assert(!isValidFen('anbqkbnr/8/8/8/8/8/PPPPPPPP/8'))
-    console.assert(!isValidFen('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/'))
-    console.assert(!isValidFen('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBN'))
-    console.assert(!isValidFen('888888/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR'))
-    console.assert(!isValidFen('888888/pppppppp/74/8/8/8/PPPPPPPP/RNBQKBNR'))
-    console.assert(!isValidFen({}))
-}
 
 /**
  * Check if the given parameter is a valid board position object.
@@ -245,19 +205,6 @@ export const isValidPositionObject = (pos: unknown): pos is BoardPositionObject 
     return true
 }
 
-if (RUN_ASSERTS) {
-    // console.assert(isValidPositionObject(START_POSITION))
-    console.assert(isValidPositionObject({}))
-    console.assert(isValidPositionObject({e2: 'wP'}))
-    console.assert(isValidPositionObject({e2: 'wP', d2: 'wP'}))
-    console.assert(!isValidPositionObject({e2: 'BP'}))
-    console.assert(!isValidPositionObject({y2: 'wP'}))
-    console.assert(!isValidPositionObject(null))
-    console.assert(!isValidPositionObject(undefined))
-    console.assert(!isValidPositionObject(1))
-    console.assert(!isValidPositionObject('start'))
-    console.assert(!isValidPositionObject(START_FEN))
-}
 
 /**
  * Convert a single-character FEN piece code into a case-insensitive two-character piece code.
@@ -337,7 +284,7 @@ export const objToFen = (obj: BoardPositionObject) => {
         for (let j = 0; j < 8; j++) {
             const square = COLUMNS[j] + currentRow
             // Piece exists.
-            if (obj.hasOwnProperty(square)) {
+            if (Object.hasOwn(obj, square)) {
                 fen = fen + pieceCodeToFen(obj[square]!)
             } else {
                 // Empty space.
@@ -354,11 +301,6 @@ export const objToFen = (obj: BoardPositionObject) => {
     return fen
 }
 
-if (RUN_ASSERTS) {
-    console.assert(objToFen(START_POSITION) === START_FEN)
-    console.assert(objToFen({}) === '8/8/8/8/8/8/8/8')
-    console.assert(objToFen({a2: 'wP', b2: 'bP'}) === '8/8/8/8/8/8/Pp6/8')
-}
 
 /**
  * Convert a standard `position` description string into a board position object.
@@ -385,9 +327,7 @@ export const normalizePosition = (
     if (!isValidPositionObject(position)) {
         return {}
     }
-    // Just return the position.
-    // TODO: Perform some checks and fix possible errors in the position?
-    return position as BoardPositionObject
+    return deepCopy(position as BoardPositionObject)
 }
 
 /**
@@ -461,7 +401,7 @@ export const findClosestPiece = (
     // Search through the position in order of distance for the piece.
     for (let i = 0; i < closestSquares.length; i++) {
         const s = closestSquares[i]
-        if (position.hasOwnProperty(s) && position[s] === piece) {
+        if (Object.hasOwn(position, s) && position[s] === piece) {
             return s as BoardSquare
         }
     }
@@ -479,18 +419,18 @@ export const calculatePositionFromMoves = (
     moves: { [from: string]: string }
 ) => {
     const newPosition = deepCopy(position)
-    for (const i in moves) {
-        if (!moves.hasOwnProperty(i)) {
-            continue
-        }
+    // Lift all moved pieces before placing them, so that moves can be given in any order.
+    const lifted = [] as [string, ChessPiece | undefined][]
+    for (const [from, to] of Object.entries(moves)) {
         // Skip the move if the position doesn't have a piece on the source square.
-        if (!newPosition.hasOwnProperty(i)) {
+        if (!Object.hasOwn(position, from)) {
             continue
         }
-        const piece = newPosition[i]
-        delete newPosition[i]
-        newPosition[moves[i]] = piece
+        lifted.push([to, position[from]])
+        delete newPosition[from]
+    }
+    for (const [to, piece] of lifted) {
+        newPosition[to] = piece
     }
     return newPosition
 }
-// TODO: add some asserts here for calculatePositionFromMoves

@@ -6,14 +6,13 @@
  * https://github.com/sam-19/chessboard-component/blob/main/LICENSE.md
  */
 
-import { LitElement, html, nothing, render, AttributePart, noChange } from 'lit'
+import { LitElement, html, nothing, render, type AttributePart, noChange, type PropertyValues } from 'lit'
 import { customElement, property, query } from 'lit/decorators.js'
-import { directive, Directive, DirectiveParameters } from 'lit/directive.js'
-import { styleMap, StyleInfo } from 'lit/directives/style-map.js'
+import { directive, Directive, type DirectiveParameters } from 'lit/directive.js'
+import { styleMap, type StyleInfo } from 'lit/directives/style-map.js'
 import { ifDefined } from 'lit/directives/if-defined.js'
 
 import {
-    StraightArrow,
     COLUMNS,
     blackPieces,
     calculatePositionFromMoves,
@@ -23,33 +22,42 @@ import {
     interpolateTemplate,
     isFunction,
     isString,
+    isValidFen,
     normalizePosition,
     objToFen,
-    styles,
-    renderPiece as renderWikipediaSVGPiece,
+    parsePieceList,
+    parseSquareList,
     isValidMove,
     isValidSquare,
     isValidPositionObject,
     whitePieces,
-} from './utils'
-import {
-    type Action,
-    type Animation,
-    type AnimationSpeed,
-    type BoardLocation,
-    type BoardPosition,
-    type BoardPositionObject,
-    type BoardSquare,
-    type ChessboardEventDetail,
-    type ChessPiece,
-    type DraggingDragState,
-    type DragState,
-    type HighlightStyle,
-    type OffBoardAction,
-    type SquareColor,
-} from '#types'
-import { AngledArrow, MarkerType, PathArrow, SquareMarker } from './utils/overlays'
-import { presetColors } from './utils/chessboard-styles'
+} from './utils/index.js'
+import { styles, presetColors } from './utils/chessboard-styles.js'
+import { renderPiece as renderWikipediaSVGPiece } from './utils/wikipedia-pieces-svg.js'
+import type {
+    Action,
+    Animation,
+    AnimationSpeed,
+    BoardLocation,
+    BoardPosition,
+    BoardPositionObject,
+    BoardSquare,
+    ChessboardEventDetail,
+    ChessboardEventMap,
+    ChessPiece,
+    DraggingDragState,
+    DragState,
+    HighlightStyle,
+    OffBoardAction,
+    SquareColor,
+} from './types.js'
+import { AngledArrow, PathArrow, SquareMarker, StraightArrow } from './utils/overlays.js'
+
+declare global {
+    interface HTMLElementTagNameMap {
+        'chess-board': ChessBoard
+    }
+}
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -63,6 +71,19 @@ const DEFAULT_SNAP_SPEED = 50
 const DEFAULT_TRASH_SPEED = 100
 /** Time threshold in seconds below which the player is considered to have low time remaining. */
 const LOW_TIME = 10
+/** Extra time to wait for a transition to end before giving up on the `transitionend` event. */
+const TRANSITION_GRACE = 50
+
+/**
+ * Split an overlay description (one item of a `;` separated list) into the leading square codes and the rest.
+ * @param desc - Description, starting with square codes separated by whitespace, commas, colons or dashes.
+ * @returns The square codes and the rest of the description (e.g. a color, which may itself contain commas).
+ */
+const parseOverlayDescription = (desc: string) => {
+    const match = desc.trim().match(/^((?:[a-h][1-8](?:[\s,:-]+|$))*)(.*)$/s)!
+    const squares = (match[1].match(/[a-h][1-8]/g) || []) as BoardSquare[]
+    return { squares, rest: match[2].trim() }
+}
 
 // ---------------------------------------------------------------------------
 // Predicates
@@ -90,7 +111,7 @@ class RenderPieceDirective extends Directive {
         if (isFunction(renderPiece)) {
             renderPiece(piece, part.element)
         } else {
-            (part.element as any).replaceChildren()
+            part.element.replaceChildren()
         }
         return noChange
     }
@@ -164,7 +185,7 @@ export type RenderPieceFunction = (
  *             * `newPosition`: the new position
  *             * `newFen`: FEN for the new position
  *             * `oldPosition`: the old position
- *             * `noldFen`: FEN for the old position
+ *             * `oldFen`: FEN for the old position
  *
  *         **Warning**: do *not* call any position-changing methods in your event
  *         listener or you may cause an infinite loop. BoardPosition-changing methods
@@ -235,6 +256,14 @@ export type RenderPieceFunction = (
  *             * `position`: the current position
  *             * `orientation`: the current orientation.
  *
+ * @fires square-click - Fired when a square is clicked (or tapped), with or without a piece on it. A piece picked up
+ *         and dropped back on its square also fires a `drop` event with `source` equal to `target`.
+ *         The event's `detail` object has the following properties:
+ *             * `square`: the square that was clicked
+ *             * `piece`: the piece on that square (or `false` if there is no piece)
+ *             * `position`: the current position
+ *             * `orientation`: the current orientation.
+ *
  * @fires snap-end - Fired when a piece completes a snap animation
  *         The event's `detail` object has the following properties:
  *             * `source`: the source of the dragged piece
@@ -243,9 +272,12 @@ export type RenderPieceFunction = (
  *
  * @cssprop [--light-color=#f0d9b5] - The background for white squares and text color for black squares.
  * @cssprop [--dark-color=#b58863] - The background for black squares and text color for white squares.
- * @cssprop [--highlight-color=yellow] - The highlight color.
+ * @cssprop [--highlight-color-active=yellow] - The highlight color of the square a piece is dragged over.
  * @cssprop [--highlight-color-available=yellowgreen] - The highlight color for squares that are available.
+ * @cssprop [--highlight-color-check=rgb(225, 0, 0)] - The highlight color for a king in check.
+ * @cssprop [--highlight-color-previous=steelblue] - The highlight color for the squares of the previous move.
  * @cssprop [--highlight-color-unavailable=gray] - The highlight color for squares that are unavailable.
+ * @cssprop [--time-low-color=rgb(175, 0, 0)] - The color of a player's remaining time when it is low.
  * @cssprop [--preset-color-blue: rgb(0, 110, 255)] - Blue preset color for overlays and colored squares.
  * @cssprop [--preset-color-cyan: rgb(0, 175, 225)] - Cyan preset color for overlays and colored squares.
  * @cssprop [--preset-color-green: rgb(0, 200, 0)] - Green preset color for overlays and colored squares.
@@ -265,9 +297,12 @@ export type RenderPieceFunction = (
  * @csspart dragged-piece - The currently dragged piece.
  * @csspart white - A white square.
  * @csspart black - A black square.
- * @csspart highlight - A highlighted square.
- * @csspart available - An available square.
- * @csspart unavailable - An unavailable square.
+ * @csspart highlight-active - The square a piece is dragged over (and the square the piece was dragged from).
+ * @csspart highlight-available - A square highlighted as `available`.
+ * @csspart highlight-check - A square highlighted as `check`.
+ * @csspart highlight-previous - A square highlighted as `previous`.
+ * @csspart highlight-unavailable - A square highlighted as `unavailable`.
+ * @csspart draggable - A square with a piece that can be dragged.
  * @csspart colored - A colored square.
  * @csspart notation - The square location labels.
  * @csspart alpha - The alpha (column) labels.
@@ -325,7 +360,8 @@ export class ChessBoard extends LitElement {
     }
 
     /**
-     * Adjust the board size based on available height.
+     * Fit the board (with possible spare pieces or player details) within the height of the parent element, as well
+     * as the width of this element. The parent element must have its height set in its `style` attribute.
      * @default false
      */
     @property({
@@ -346,15 +382,14 @@ export class ChessBoard extends LitElement {
             const arrows = []
             const arrowDescriptions = value.split(';')
             for (const desc of arrowDescriptions) {
-                const params = desc.trim().split(/[,\-:\s]/)
-                if (params.length < 3) {
+                const { squares, rest: color } = parseOverlayDescription(desc)
+                if (squares.length < 2 || !color) {
                     continue
                 }
-                if (params.length === 3) {
-                    arrows.push(new AngledArrow(params[0] as BoardSquare, params[1] as BoardSquare, params[2]))
+                if (squares.length === 2) {
+                    arrows.push(new AngledArrow(squares[0], squares[1], color))
                 } else {
-                    const lastIdx = params.length - 1
-                    arrows.push(new PathArrow(params.slice(0, lastIdx) as BoardSquare[], params[lastIdx]))
+                    arrows.push(new PathArrow(squares, color))
                 }
             }
             return arrows
@@ -437,21 +472,16 @@ export class ChessBoard extends LitElement {
             const squares = []
             const squareDescriptions = value.split(';')
             for (const desc of squareDescriptions) {
-                const params = desc.trim().split(/[,\-:\s]/)
-                if (params.length < 2) {
-                    continue
-                }
-                let color = 'var(--preset-color-yellow)'
-                if (
-                    params[params.length - 1].startsWith('@') &&
-                    params[params.length - 1].substring(1) in presetColors
-                ) {
-                    color = `var(--preset-color-${params[params.length - 1].substring(1)})`
-                } else if (!isValidSquare(params[1])) {
-                    color = params[1]
-                }
-                for (let i=0; i<params.length - 1; i++) {
-                    squares.push({ color: color, square: params[i] })
+                const { squares: colored, rest } = parseOverlayDescription(desc)
+                // The color is optional and defaults to yellow.
+                const color = !rest ? 'var(--preset-color-yellow)'
+                            : rest.startsWith('@')
+                              ? rest.substring(1) in presetColors
+                                ? `var(--preset-color-${rest.substring(1)})`
+                                : 'var(--preset-color-grey)'
+                              : rest
+                for (const square of colored) {
+                    squares.push({ color: color, square: square })
                 }
             }
             return squares
@@ -461,7 +491,8 @@ export class ChessBoard extends LitElement {
     colorSquares: { color: string, square: BoardSquare }[] = []
 
     /**
-     * If `true`, the time remaining for the player in turn will count down.
+     * If `true`, the displayed time of the player in turn counts down from the last value set to `blackSeconds` or
+     * `whiteSeconds`. Only the display counts down; the properties keep the value that was set.
      * @default false
      */
     @property({
@@ -469,9 +500,6 @@ export class ChessBoard extends LitElement {
         type: Boolean,
     })
     countdown = false
-
-    @property({ type: Number })
-    countdownTimeout = 0
 
     /**
      * If `true`, pieces on the board are draggable to other squares.
@@ -492,6 +520,13 @@ export class ChessBoard extends LitElement {
      */
     @property({ attribute: 'drop-off-board' })
     dropOffBoard: OffBoardAction = 'snapback'
+
+    /**
+     * Squares to highlight, mapped to their highlight style, e.g. `{ e2: 'previous', e4: 'previous', g8: 'check' }`.
+     * Assign a new object to update the highlights.
+     */
+    @property({ attribute: false })
+    highlights: Partial<Record<BoardSquare, HighlightStyle>> = {}
 
     /**
      * Animation speed for when pieces move between squares or from spare pieces to the board.
@@ -590,20 +625,15 @@ export class ChessBoard extends LitElement {
             const markers = []
             const markerDescriptions = value.split(';')
             for (const desc of markerDescriptions) {
-                const params = desc.trim().split(/[,\-:\s]/)
-                if (params.length < 3) {
+                const { squares, rest } = parseOverlayDescription(desc)
+                // The rest is the marker type followed by the color.
+                const [type, color] = [rest.charAt(0), rest.substring(1).trim()]
+                const mType = type === 'o' ? 'circle' : type === 'x' ? 'cross' : null
+                if (!mType || !color) {
                     continue
                 }
-                let mType = '' as MarkerType
-                if (params[params.length - 2] === 'o') {
-                    mType = 'circle'
-                } else if (params[params.length - 2] === 'x') {
-                    mType = 'cross'
-                }
-                if (mType) {
-                    for (let i=0; i< params.length - 2; i++) {
-                        markers.push(new SquareMarker(params[i] as BoardSquare, mType, params[params.length - 1]))
-                    }
+                for (const square of squares) {
+                    markers.push(new SquareMarker(square, mType, color))
                 }
             }
             return markers
@@ -624,11 +654,11 @@ export class ChessBoard extends LitElement {
             const arrows = []
             const arrowDescriptions = value.split(';')
             for (const desc of arrowDescriptions) {
-                const params = desc.trim().split(/[,\-:\s]/)
-                if (params.length !== 3) {
+                const { squares, rest: color } = parseOverlayDescription(desc)
+                if (squares.length !== 2 || !color) {
                     continue
                 }
-                arrows.push(new StraightArrow(params[0] as BoardSquare, params[1] as BoardSquare, params[2]))
+                arrows.push(new StraightArrow(squares[0], squares[1], color))
             }
             return arrows
         },
@@ -700,13 +730,27 @@ export class ChessBoard extends LitElement {
     @query('[part~="dragged-piece"]')
     private _draggedPieceElement!: HTMLElement
 
-    #highlightSquares = new Map<BoardSquare, HighlightStyle >()
+    @query('[part~="board"]')
+    private _boardElement?: HTMLElement
+
+    /** Square highlights set during a drag operation. */
+    #dragHighlights = new Map<BoardSquare, HighlightStyle>()
 
     #animations = new Map<BoardLocation, Animation>()
+    /** Identifies the latest animation run, so that an interrupted run does not finish the next one. */
+    #animationRun = 0
+
+    /** Countdown state of the player in turn. */
+    #clock: { color: SquareColor, seconds: number, startedAt: number } | null = null
+    #clockTimeout: ReturnType<typeof setTimeout> | null = null
 
     #currentPosition: BoardPositionObject = {}
 
     #dragState?: DragState
+
+    #resizeObserver: ResizeObserver | null = null
+    /** Square size used in the latest render. */
+    #renderedSquareSize = 0
 
     /**
      * Is the current drag state "dragging".
@@ -716,17 +760,26 @@ export class ChessBoard extends LitElement {
     }
 
     /**
+     * Ratio of the rendered size of the element to its layout size, if the element is scaled with CSS transforms.
+     */
+    get #scale () {
+        return this.offsetWidth ? this.getBoundingClientRect().width/this.offsetWidth || 1 : 1
+    }
+
+    /**
      * Get the edge length of a single square in pixels.
      */
     get #squareSize () {
         // Note: this isn't cached, but is called during user interactions, so we
         // have a bit of time to use under RAIL guidelines.
-        if (this.adjustByHeight && this.parentElement?.style.height) {
+        const byWidth = this.offsetWidth / 8
+        // The parent's height must be set explicitly, or it would follow the size of the board.
+        const parentHeight = this.parentElement?.style.height ? this.parentElement.clientHeight : 0
+        if (this.adjustByHeight && parentHeight) {
             const hasExtraRows = this.sparePieces || this.blackName || this.whiteName
-            return this.parentElement.offsetHeight / (hasExtraRows ? 10 : 8)
-        } else {
-            return this.offsetWidth / 8
+            return Math.min(byWidth, parentHeight / (hasExtraRows ? 10 : 8))
         }
+        return byWidth
     }
 
     /**
@@ -762,6 +815,7 @@ export class ChessBoard extends LitElement {
     // -------------------------------------------------------------------------
 
     render () {
+        this.#renderedSquareSize = this.#squareSize
         const detailStyles = {
             height: `${!this.sparePieces && (this.blackName || this.whiteName) ? this.#squareSize : 0}px`,
             width: `${!this.sparePieces && (this.blackName || this.whiteName) ? 8*this.#squareSize : 0}px`,
@@ -773,7 +827,7 @@ export class ChessBoard extends LitElement {
             width: `${this.sparePieces ? 8*this.#squareSize : 0}px`,
         }
         return html`
-            <div part="wrapper">
+            <div part="${this.#concatParts('wrapper', this.#dragState ? 'dragging' : '')}">
                 <div part="spare-pieces" style="${styleMap(spareStyles)}">
                     ${this.#renderSparePieces(
                         this.orientation === 'white' ? 'black' : 'white'
@@ -829,10 +883,9 @@ export class ChessBoard extends LitElement {
                 (color === 'white' && (this.whiteSeconds !== null || this.whiteTime !== null))
             ) ? 'flex' : 'none'
         }
-        const isLowTime = (color === 'black' && this.blackSeconds !== null && this.blackSeconds < LOW_TIME) ||
-                          (color === 'white' && this.whiteSeconds !== null && this.whiteSeconds < LOW_TIME)
-        const playerTime = color === 'black' ? (this.blackSeconds || 0) : (this.whiteSeconds || 0)
-        const isOutOfTime = playerTime === 0
+        const playerTime = this.#remainingSeconds(color)
+        const isLowTime = playerTime !== null && playerTime < LOW_TIME
+        const isOutOfTime = playerTime !== null && playerTime <= 0
         // Only display the second fraction if total time remaining is below threshold.
         const fractionStyles = {
             display: isLowTime && !isOutOfTime ? 'block' : 'none'
@@ -843,49 +896,16 @@ export class ChessBoard extends LitElement {
         const playerRating =
             (color === 'black' ? this.blackRating : this.whiteRating) ||
             (playerTitle ? '' : 'Unrated')
-        const timeMinutes = Math.floor(playerTime/60)
-        const timeSeconds = Math.floor(playerTime%60).toString().padStart(2, '0')
-        const timeFraction = playerTime.toFixed(1).split('.')[1]
-        // Start possible countdown for the color in turn.
-        if (this.countdown && this.turn === color && playerTime && !this.countdownTimeout) {
-            // Take note of the time of the next exat seconds to keep the clock in sync.
-            const startTime = Date.now()
-            // Add 50 ms to make sure that the displayed second always changes.
-            const secOffset = (playerTime*1000)%1000 + 50
-            let timeCountedDown = secOffset
-            const updateTime = (delta: number) => {
-                const timeRemaining = color === 'black' ? (this.blackSeconds || 0) : (this.whiteSeconds || 0)
-                if (color = 'black') {
-                    (this.blackSeconds as number) -= delta/1000
-                    if ((this.blackSeconds as number) <= 0) {
-                        // Don't go into negative numbers...
-                        this.blackSeconds = 0
-                        return
-                    }
-                } else {
-                    (this.whiteSeconds as number) -= delta/1000
-                    if ((this.whiteSeconds as number) <= 0) {
-                        this.whiteSeconds = 0
-                        return
-                    }
-                }
-                const timeSync = Date.now() - startTime - timeCountedDown
-                // Start faster update interval the seconds before we reach low time range.
-                const tickTarget = timeRemaining > LOW_TIME + 1 ? 100 : 50
-                const nexTick = tickTarget - timeSync
-                this.countdownTimeout = setTimeout(() => updateTime(nexTick), nexTick)
-                timeCountedDown += tickTarget + timeSync
-            }
-            if (this.countdownTimeout) {
-                clearTimeout(this.countdownTimeout)
-            }
-            // Countdown the remaining fraction first.
-            this.countdownTimeout = setTimeout(() => updateTime(secOffset), secOffset)
-        }
+        // Round down to whole tenths, so that the displayed parts stay consistent with each other.
+        const tenths = Math.floor(Math.max(playerTime ?? 0, 0)*10)
+        const timeMinutes = Math.floor(tenths/600)
+        const timeSeconds = (Math.floor(tenths/10)%60).toString().padStart(2, '0')
+        const timeFraction = tenths%10
+        const formattedTime = color === 'black' ? this.blackTime : this.whiteTime
         return html`
             <div part="${this.#concatParts(
                 'player-details',
-                'player-${color}',
+                `player-${color}`,
                 color === this.turn ? 'player-turn' : '',
             )}">
                 <div part="player-name">
@@ -898,26 +918,87 @@ export class ChessBoard extends LitElement {
             </div>
             <div part="${this.#concatParts(
                     'player-timer',
-                    'timer-${color}',
+                    `timer-${color}`,
                     isOutOfTime ? 'timer-low' : '',
                 )}"
                 style="${styleMap(timerStyles)}"
             >
-                <div part="timer-minutes">
-                    ${timeMinutes}
-                </div>
-                :
-                <div part="${this.#concatParts(
-                    'timer-seconds',
-                    isLowTime && !isOutOfTime ? 'timer-low' : ''
-                )}">
-                    ${timeSeconds}
-                </div>
-                <div part="timer-fraction timer-low" style="${styleMap(fractionStyles)}">
-                    .${timeFraction}
-                </div>
+                ${playerTime === null ? formattedTime : html`
+                    <div part="timer-minutes">
+                        ${timeMinutes}
+                    </div>
+                    :
+                    <div part="${this.#concatParts(
+                        'timer-seconds',
+                        isLowTime && !isOutOfTime ? 'timer-low' : ''
+                    )}">
+                        ${timeSeconds}
+                    </div>
+                    <div part="timer-fraction timer-low" style="${styleMap(fractionStyles)}">
+                        .${timeFraction}
+                    </div>
+                `}
             </div>
         `
+    }
+    /**
+     * Get the time remaining for the player of the given `color`, including a running countdown.
+     * @param color - Color of the player.
+     * @returns Remaining time in seconds, or null if `blackSeconds`/`whiteSeconds` is not set.
+     */
+    #remainingSeconds (color: SquareColor) {
+        const seconds = color === 'black' ? this.blackSeconds : this.whiteSeconds
+        if (seconds === null || seconds === undefined) {
+            return null
+        }
+        if (this.#clock?.color === color) {
+            return Math.max(this.#clock.seconds - (performance.now() - this.#clock.startedAt)/1000, 0)
+        }
+        return Math.max(seconds, 0)
+    }
+    /**
+     * Start counting down the time of the player in turn from the current `blackSeconds`/`whiteSeconds` value, or stop
+     * the countdown if it does not apply.
+     */
+    #restartCountdown () {
+        const seconds = this.turn === 'black' ? this.blackSeconds
+                      : this.turn === 'white' ? this.whiteSeconds
+                      : null
+        if (!this.countdown || !this.turn || !seconds || seconds <= 0) {
+            this.#clock = null
+            this.#stopClockTicks()
+            return
+        }
+        this.#clock = { color: this.turn, seconds: seconds, startedAt: performance.now() }
+        this.#scheduleClockTick()
+    }
+    /**
+     * Schedule the next update of the countdown display at the moment the displayed time changes.
+     */
+    #scheduleClockTick () {
+        this.#stopClockTicks()
+        if (!this.#clock || !this.isConnected) {
+            return
+        }
+        const remaining = this.#remainingSeconds(this.#clock.color) ?? 0
+        if (remaining <= 0) {
+            return
+        }
+        // Tenths of a second are displayed only when time is low.
+        const step = remaining <= LOW_TIME ? 0.1 : 1
+        // Time until the remaining time drops below the next displayed step (plus a small margin).
+        const untilNext = (remaining % step || step)*1000 + 5
+        this.#clockTimeout = setTimeout(() => {
+            this.#clockTimeout = null
+            this.requestUpdate()
+            this.#scheduleClockTick()
+        }, untilNext)
+    }
+    #stopClockTicks () {
+        if (this.#clockTimeout !== null) {
+            clearTimeout(this.#clockTimeout)
+            this.#clockTimeout = null
+        }
     }
     /**
      * Render spare pieces of the given `color`. Pieces are rendered on an additional row instead of the player details.
@@ -941,6 +1022,7 @@ export class ChessBoard extends LitElement {
             R: Math.max(Object.values(this.position).filter(bp => bp === `${c}R`).length - 2, 0),
         }
         const nExtraTotal = nExtra.B + nExtra.N + nExtra.Q + nExtra.R
+        const availableSpares = this.availableSparePieces === null ? null : parsePieceList(this.availableSparePieces)
         // The empty <div>s below are placeholders to get the shelf to line up with the board's grid. Another option
         // would be to try to use the same grid, either with a single container, or subgrid/display:contents when those
         // are available.
@@ -960,10 +1042,7 @@ export class ChessBoard extends LitElement {
                                            : p.endsWith('R') ? Math.min((2 + promoCount) - pieceCount, availPieces)
                                            : 0
                     const disabled = (availableForKind < 1 && !this.superfluousPieces) ||
-                                     (
-                                        this.availableSparePieces !== null &&
-                                        !this.availableSparePieces.toLowerCase().includes(p.toLowerCase())
-                                     )
+                                     (availableSpares !== null && !availableSpares.has(p))
                     return html`
                         <div
                             id="spare-${p}"
@@ -971,8 +1050,7 @@ export class ChessBoard extends LitElement {
                                 'spare-piece',
                                 disabled ? 'disabled' : '',
                             )}"
-                            @mousedown=${disabled ? null : this.#pointerdownSparePiece}
-                            @touchstart=${disabled ? null : this.#pointerdownSparePiece}
+                            @pointerdown=${disabled ? null : this.#pointerdownSparePiece}
                         >
                             ${this.#renderPiece(p, {}, false, sparePieceId(p))}
                         </div>
@@ -994,12 +1072,14 @@ export class ChessBoard extends LitElement {
         if (dragState !== undefined) {
             styles.display = 'block'
             const rect = this.getBoundingClientRect()
+            // Convert viewport distances into the element's own (possibly scaled) pixels.
+            const scale = this.#scale
 
             if (dragState.state === 'dragging') {
                 const {x, y} = dragState
                 Object.assign(styles, {
-                    top: `${y - rect.top - this.#squareSize / 2}px`,
-                    left: `${x - rect.left - this.#squareSize / 2}px`,
+                    top: `${(y - rect.top)/scale - this.#squareSize / 2}px`,
+                    left: `${(x - rect.left)/scale - this.#squareSize / 2}px`,
                 })
             } else if (dragState.state === 'snapback') {
                 const { source } = dragState
@@ -1008,8 +1088,8 @@ export class ChessBoard extends LitElement {
                 Object.assign(styles, {
                     transitionProperty: 'top, left',
                     transitionDuration: `${speedToMS(this.snapbackSpeed)}ms`,
-                    top: `${squareRect.top - rect.top}px`,
-                    left: `${squareRect.left - rect.left}px`,
+                    top: `${(squareRect.top - rect.top)/scale}px`,
+                    left: `${(squareRect.left - rect.left)/scale}px`,
                 })
             } else if (dragState.state === 'trash') {
                 const {x, y} = dragState
@@ -1017,8 +1097,8 @@ export class ChessBoard extends LitElement {
                     transitionProperty: 'opacity',
                     transitionDuration: `${speedToMS(this.trashSpeed)}ms`,
                     opacity: '0',
-                    top: `${y - rect.top - this.#squareSize / 2}px`,
-                    left: `${x - rect.left - this.#squareSize / 2}px`,
+                    top: `${(y - rect.top)/scale - this.#squareSize / 2}px`,
+                    left: `${(x - rect.left)/scale - this.#squareSize / 2}px`,
                 })
             } else if (dragState.state === 'snap') {
                 const square = this.#getSquareElement(dragState.location as BoardSquare)
@@ -1026,8 +1106,8 @@ export class ChessBoard extends LitElement {
                 Object.assign(styles, {
                     transitionProperty: 'top, left',
                     transitionDuration: `${speedToMS(this.snapSpeed)}ms`,
-                    top: `${squareRect.top - rect.top}px`,
-                    left: `${squareRect.left - rect.left}px`,
+                    top: `${(squareRect.top - rect.top)/scale}px`,
+                    left: `${(squareRect.left - rect.left)/scale}px`,
                 })
             }
         }
@@ -1046,6 +1126,7 @@ export class ChessBoard extends LitElement {
     #renderBoard () {
         const squares = []
         const isFlipped = this.orientation === 'black'
+        const availableSquares = this.availableBoardPieces === null ? null : parseSquareList(this.availableBoardPieces)
         for (let row=0; row<8; row++) {
             for (let col=0; col<8; col++) {
                 const file = COLUMNS[isFlipped ? 7 - col : col]
@@ -1055,7 +1136,7 @@ export class ChessBoard extends LitElement {
                 let piece = this.#currentPosition[square]
                 const isDragSource = square === this.#dragState?.source
                 const animation = this.#animations.get(square)
-                const highlightStyle = this.#highlightSquares.get(square)
+                const highlightStyle = this.#dragHighlights.get(square) ?? this.highlights?.[square]
                 const squareHighlight =
                     isDragSource ? 'highlight-active'
                         : highlightStyle
@@ -1065,10 +1146,8 @@ export class ChessBoard extends LitElement {
                 const squareStyles = colorSquare
                         ? { boxShadow: `inset 0 0 ${ this.#squareSize }px 0 ${ colorSquare.color }` } : {}
                 const draggable =
-                    piece && (
-                        this.availableBoardPieces === null ||
-                        this.availableBoardPieces?.toLowerCase().includes(square)
-                    )
+                    piece && (this.draggablePieces || this.sparePieces) &&
+                    (availableSquares === null || availableSquares.has(square))
                         ? 'draggable' : ''
                 const pieceStyles = this.#getAnimationStyles(piece, animation)
                 if (!piece && animation?.type === 'clear') {
@@ -1089,10 +1168,10 @@ export class ChessBoard extends LitElement {
                             draggable
                         )}"
                         style="${styleMap(squareStyles)}"
-                        @mousedown=${this.#pointerdownSquare}
-                        @mouseenter=${this.#pointerenterSquare}
-                        @mouseleave=${this.#pointerleaveSquare}
-                        @touchstart=${this.#pointerdownSquare}
+                        @click=${this.#clickSquare}
+                        @pointerdown=${this.#pointerdownSquare}
+                        @pointerenter=${this.#pointerenterSquare}
+                        @pointerleave=${this.#pointerleaveSquare}
                     >
                         ${this.showNotation && row === 7
                             ? html`<div part="notation alpha">${file}</div>`
@@ -1109,18 +1188,20 @@ export class ChessBoard extends LitElement {
         const styles = {
             width: this.#squareSize * 8 + 'px',
             height: this.#squareSize * 8 + 'px',
+            // Scale the notation with the board.
+            fontSize: `${Math.max(Math.round(this.#squareSize/5), 8)}px`,
         }
         // Add overlays.
         const arrows = []
         for (const arr of this.angledArrows || []) {
-            arrows.push(arr.getSvg())
+            arrows.push(arr.getSvg(isFlipped))
         }
         for (const arr of this.straightArrows || []) {
-            arrows.push(arr.getSvg())
+            arrows.push(arr.getSvg(isFlipped))
         }
         const markers = []
         for (const mrk of this.squareMarkers || []) {
-            markers.push(mrk.getSvg())
+            markers.push(mrk.getSvg(isFlipped))
         }
         return html`<div part="board" style=${styleMap(styles)}>${squares}${arrows}${markers}</div>`
     }
@@ -1169,6 +1250,13 @@ export class ChessBoard extends LitElement {
         `
     }
     /**
+     * Check if an added `piece` is animated from the spare pieces, instead of fading in.
+     * @param piece - The added piece.
+     */
+    #isAddedFromSpares (piece: ChessPiece) {
+        return this.sparePieces && this.draggablePieces && !!this.shadowRoot?.getElementById(sparePieceId(piece))
+    }
+    /**
      * Get possible `animation` styles for the given `piece`.
      * @param piece - The chess piece.
      * @param animation - Possible animation.
@@ -1182,7 +1270,7 @@ export class ChessBoard extends LitElement {
             if (
                 piece &&
                 (animation.type === 'move-start' ||
-                    (animation.type === 'add-start' && this.draggablePieces))
+                    (animation.type === 'add-start' && this.#isAddedFromSpares(piece)))
             ) {
                 // BoardPosition the moved piece absolutely at the source.
                 const srcSquare =
@@ -1197,10 +1285,11 @@ export class ChessBoard extends LitElement {
                 const srcSquareRect = srcSquare.getBoundingClientRect()
                 const destSquareRect = destSquare.getBoundingClientRect()
 
+                const scale = this.#scale
                 return {
                     position: 'absolute',
-                    left: `${srcSquareRect.left - destSquareRect.left}px`,
-                    top: `${srcSquareRect.top - destSquareRect.top}px`,
+                    left: `${(srcSquareRect.left - destSquareRect.left)/scale}px`,
+                    top: `${(srcSquareRect.top - destSquareRect.top)/scale}px`,
                     width: `${this.#squareSize}px`,
                     height: `${this.#squareSize}px`,
                 }
@@ -1208,7 +1297,7 @@ export class ChessBoard extends LitElement {
             if (
                 piece &&
                 (animation.type === 'move' ||
-                    (animation.type === 'add' && this.draggablePieces))
+                    (animation.type === 'add' && this.#isAddedFromSpares(piece)))
             ) {
                 // Transition the moved piece to the destination.
                 return {
@@ -1222,8 +1311,7 @@ export class ChessBoard extends LitElement {
                 }
             }
             if (!piece && animation.type === 'clear') {
-                // Preserve and transition a removed piece to opacity 0.
-                piece = animation.piece
+                // Transition a removed piece (preserved by the caller) to opacity 0.
                 return {
                     transitionProperty: 'opacity',
                     transitionDuration: `${speedToMS(this.trashSpeed)}ms`,
@@ -1251,42 +1339,70 @@ export class ChessBoard extends LitElement {
     // Event Listeners
     // -------------------------------------------------------------------------
 
-    #pointerdownSquare (e: PointerEvent | TouchEvent) {
+    #clickSquare (e: MouseEvent) {
+        const square = (e.currentTarget as HTMLElement).getAttribute('data-square')
+        if (!isValidSquare(square)) {
+            return
+        }
+        this.dispatchEvent(
+            new CustomEvent<ChessboardEventDetail['square-click']>(
+                'square-click',
+                {
+                    bubbles: true,
+                    detail: {
+                        square,
+                        piece: this.#currentPosition[square] || false,
+                        position: deepCopy(this.#currentPosition),
+                        orientation: this.orientation,
+                    },
+                }
+            )
+        )
+    }
+
+    /**
+     * Check if the pointer event can start a drag operation.
+     * @param e - Pointer event.
+     */
+    #canStartDrag (e: PointerEvent) {
+        // Only drag with the primary pointer and the main (left) mouse button, and one piece at a time.
+        return e.isPrimary && e.button === 0 && this.#dragState === undefined
+    }
+
+    #pointerdownSquare (e: PointerEvent) {
         // Do nothing if we're not draggable. sparePieces implies draggable.
-        if (!this.draggablePieces && !this.sparePieces) {
+        if ((!this.draggablePieces && !this.sparePieces) || !this.#canStartDrag(e)) {
             return
         }
         // Do nothing if there is no piece on this square.
         const squareEl = e.currentTarget as HTMLElement
-        const square = squareEl.getAttribute('data-square') as BoardSquare
-        if (square === null || !this.#currentPosition.hasOwnProperty(square)) {
+        const square = squareEl.getAttribute('data-square')
+        if (!isValidSquare(square) || !this.#currentPosition[square]) {
             return
         }
         // Ignore squares that don't have a movable piece.
-        if (this.availableBoardPieces !== null && !this.availableBoardPieces.includes(square)) {
+        if (this.availableBoardPieces !== null && !parseSquareList(this.availableBoardPieces).has(square)) {
             return
         }
         e.preventDefault()
-        const pos = e instanceof MouseEvent ? e : e.changedTouches[0]
         this.#startDraggingPiece(
             square,
             this.#currentPosition[square]!,
-            pos.clientX,
-            pos.clientY
+            e.clientX,
+            e.clientY
         )
     }
 
-    #pointerdownSparePiece (e: PointerEvent | TouchEvent) {
+    #pointerdownSparePiece (e: PointerEvent) {
         // Do nothing if sparePieces is not enabled.
-        if (!this.sparePieces) {
+        if (!this.sparePieces || !this.#canStartDrag(e)) {
             return
         }
         const sparePieceContainerEl = e.currentTarget as HTMLElement
         const pieceEl = sparePieceContainerEl.querySelector('[part~=piece]')
         const piece = pieceEl!.getAttribute('piece')! as ChessPiece
         e.preventDefault()
-        const pos = e instanceof MouseEvent ? e : e.changedTouches[0]
-        this.#startDraggingPiece('spare', piece, pos.clientX, pos.clientY)
+        this.#startDraggingPiece('spare', piece, e.clientX, e.clientY)
     }
 
     #pointerenterSquare (e: PointerEvent) {
@@ -1301,7 +1417,7 @@ export class ChessBoard extends LitElement {
             return
         }
         const piece =
-            this.#currentPosition.hasOwnProperty(square) &&
+            Object.hasOwn(this.#currentPosition, square) &&
             this.#currentPosition[square]!
         // Dispatch custom event.
         this.dispatchEvent(
@@ -1332,7 +1448,7 @@ export class ChessBoard extends LitElement {
             return
         }
         const piece =
-            this.#currentPosition.hasOwnProperty(square) &&
+            Object.hasOwn(this.#currentPosition, square) &&
             this.#currentPosition[square]!
         // Dispatch custom event.
         this.dispatchEvent(
@@ -1351,25 +1467,38 @@ export class ChessBoard extends LitElement {
         )
     }
 
-    #pointermoveWindow (e: PointerEvent | TouchEvent) {
+    // Window listeners are arrow functions, so that the same function can be removed later.
+
+    #pointermoveWindow = (e: PointerEvent) => {
         // Do nothing if we are not dragging a piece.
-        if (!this.#isDragging) {
+        if (!this.#isDragging || !e.isPrimary) {
             return
         }
-        // Prevent screen from scrolling.
         e.preventDefault()
-        const pos = e instanceof MouseEvent ? e : e.changedTouches[0]
-        this.#updateDraggedPiece(pos.clientX, pos.clientY)
+        this.#updateDraggedPiece(e.clientX, e.clientY)
     }
 
-    #pointerupWindow (e: PointerEvent | TouchEvent) {
+    #pointerupWindow = (e: PointerEvent) => {
         // Do nothing if we are not dragging a piece.
-        if (!this.#isDragging) {
+        if (!this.#isDragging || !e.isPrimary) {
             return
         }
-        const pos = e instanceof MouseEvent ? e : e.changedTouches[0]
-        const location = this.#isXYOnSquare(pos.clientX, pos.clientY)
-        this.#stopDraggingPiece(location)
+        this.#removeWindowListeners()
+        // A cancelled pointer (e.g. the browser took over a touch gesture) returns the piece.
+        const location = e.type === 'pointercancel' ? 'offboard' : this.#isXYOnSquare(e.clientX, e.clientY)
+        this.#stopDraggingPiece(location, e.type === 'pointercancel')
+    }
+
+    #addWindowListeners () {
+        window.addEventListener('pointermove', this.#pointermoveWindow, { passive: false })
+        window.addEventListener('pointerup', this.#pointerupWindow)
+        window.addEventListener('pointercancel', this.#pointerupWindow)
+    }
+
+    #removeWindowListeners () {
+        window.removeEventListener('pointermove', this.#pointermoveWindow)
+        window.removeEventListener('pointerup', this.#pointerupWindow)
+        window.removeEventListener('pointercancel', this.#pointerupWindow)
     }
 
     // -------------------------------------------------------------------------
@@ -1394,17 +1523,17 @@ export class ChessBoard extends LitElement {
         const squaresMovedTo: {[square: string]: boolean} = {}
         // Ignore pieces that are the same in both positions.
         for (const i in pos2) {
-            if (!pos2.hasOwnProperty(i)) {
+            if (!Object.hasOwn(pos2, i)) {
                 continue
             }
-            if (pos1.hasOwnProperty(i) && pos1[i] === pos2[i]) {
+            if (Object.hasOwn(pos1, i) && pos1[i] === pos2[i]) {
                 delete pos1[i]
                 delete pos2[i]
             }
         }
         // Find all the "move" animations.
         for (const i in pos2) {
-            if (!pos2.hasOwnProperty(i)) {
+            if (!Object.hasOwn(pos2, i)) {
                 continue
             }
             const closestPiece = findClosestPiece(pos1, pos2[i]!, i as BoardSquare)
@@ -1423,7 +1552,7 @@ export class ChessBoard extends LitElement {
         }
         // '"add" animations for new pieces on the board.
         for (const i in pos2) {
-            if (!pos2.hasOwnProperty(i)) {
+            if (!Object.hasOwn(pos2, i)) {
                 continue
             }
             animations.push({
@@ -1435,11 +1564,11 @@ export class ChessBoard extends LitElement {
         }
         // "clear" animations for pieces removed from the board.
         for (const i in pos1) {
-            if (!pos1.hasOwnProperty(i)) {
+            if (!Object.hasOwn(pos1, i)) {
                 continue
             }
             // Do not clear a piece if it is on a square that is the result of a "move", ie: a piece capture.
-            if (squaresMovedTo.hasOwnProperty(i)) {
+            if (Object.hasOwn(squaresMovedTo, i)) {
                 continue
             }
             animations.push({
@@ -1462,33 +1591,12 @@ export class ChessBoard extends LitElement {
         oldPos: BoardPositionObject,
         newPos: BoardPositionObject
     ) {
+        // A new run interrupts any animations still in progress.
+        const run = ++this.#animationRun
         if (!animations.length) {
+            this.#animations.clear()
             return
         }
-        let numFinished = 0
-        const transitionEndListener = () => {
-            numFinished++
-            if (numFinished === animations.length) {
-                this.shadowRoot!.removeEventListener(
-                    'transitionend',
-                    transitionEndListener
-                )
-                this.#animations.clear()
-                this.requestUpdate()
-                this.dispatchEvent(
-                    new CustomEvent<ChessboardEventDetail['move-end']>(
-                        'move-end',
-                        {
-                            bubbles: true,
-                            detail: {
-                                oldPosition: deepCopy(oldPos),
-                                newPosition: deepCopy(newPos),
-                            },
-                        })
-                )
-            }
-        }
-        this.shadowRoot!.addEventListener('transitionend', transitionEndListener)
         // Render once with added pieces at opacity 0 to "fade the pieces in".
         this.#animations.clear()
         for (const animation of animations) {
@@ -1508,17 +1616,77 @@ export class ChessBoard extends LitElement {
         }
         // Wait for a paint.
         this.requestUpdate()
-        await new Promise((resolve) => setTimeout(resolve, 0))
+        await this.#nextFrame()
+        if (run !== this.#animationRun) {
+            return
+        }
         // Render again with the piece at opacity 1 with a transition.
         this.#animations.clear()
+        let duration = 0
         for (const animation of animations) {
             if (animation.type === 'move' || animation.type === 'move-start') {
                 this.#animations.set(animation.destination, animation)
+                duration = Math.max(duration, speedToMS(this.moveSpeed))
             } else {
                 this.#animations.set(animation.square, animation)
+                duration = Math.max(
+                    duration,
+                    speedToMS(animation.type === 'clear' ? this.trashSpeed : this.appearSpeed),
+                    // Pieces added from spare pieces move to their square.
+                    animation.type === 'add' && this.#isAddedFromSpares(animation.piece) ? speedToMS(this.moveSpeed) : 0,
+                )
             }
         }
         this.requestUpdate()
+        // Transition events are not reliable (they don't fire if nothing changes or the element is removed), so wait
+        // for the known duration of the transitions instead.
+        await new Promise((resolve) => setTimeout(resolve, duration + TRANSITION_GRACE))
+        if (run !== this.#animationRun) {
+            return
+        }
+        this.#animations.clear()
+        this.requestUpdate()
+        this.dispatchEvent(
+            new CustomEvent<ChessboardEventDetail['move-end']>(
+                'move-end',
+                {
+                    bubbles: true,
+                    detail: {
+                        oldPosition: deepCopy(oldPos),
+                        newPosition: deepCopy(newPos),
+                    },
+                })
+        )
+    }
+    /**
+     * Wait for the element to update and the browser to apply the new styles, so that the styles set after this can
+     * start a transition.
+     */
+    async #nextFrame () {
+        await this.updateComplete
+        // Reading layout forces the browser to compute the current styles.
+        void this._boardElement?.offsetWidth
+    }
+    /**
+     * Wait for the transition of the dragged piece to end.
+     * @param speed - Speed of the transition, used to stop waiting if the transition never starts.
+     */
+    #draggedPieceTransition (speed: AnimationSpeed) {
+        return new Promise<void>((resolve) => {
+            const el = this._draggedPieceElement
+            const done = () => {
+                clearTimeout(timeout)
+                el?.removeEventListener('transitionend', onEnd)
+                resolve()
+            }
+            const onEnd = (e: Event) => {
+                if (e.target === el) {
+                    done()
+                }
+            }
+            const timeout = setTimeout(done, speedToMS(speed) + TRANSITION_GRACE)
+            el?.addEventListener('transitionend', onEnd)
+        })
     }
     /**
      * Place the currently dragged piece on the given `square`.
@@ -1542,35 +1710,24 @@ export class ChessBoard extends LitElement {
         }
         // Wait for a paint.
         this.requestUpdate()
-        await new Promise((resolve) => setTimeout(resolve, 0))
-        // Promise that resolves when the piece has reached its position on the square.
-        return new Promise<void>((resolve) => {
-            const transitionComplete = () => {
-                this._draggedPieceElement.removeEventListener(
-                    'transitionend',
-                    transitionComplete
-                )
-                resolve()
-                // Fire the snap-end event.
-                this.dispatchEvent(
-                    new CustomEvent<ChessboardEventDetail['snap-end']>(
-                        'snap-end',
-                        {
-                            bubbles: true,
-                            detail: {
-                                source,
-                                square,
-                                piece,
-                            },
-                        }
-                    )
-                )
-            }
-            this._draggedPieceElement.addEventListener(
-                'transitionend',
-                transitionComplete
+        await this.#nextFrame()
+        // Wait until the piece has reached its position on the square.
+        await this.#draggedPieceTransition(this.snapSpeed)
+        this.#finishDrag()
+        // Fire the snap-end event.
+        this.dispatchEvent(
+            new CustomEvent<ChessboardEventDetail['snap-end']>(
+                'snap-end',
+                {
+                    bubbles: true,
+                    detail: {
+                        source,
+                        square,
+                        piece,
+                    },
+                }
             )
-        })
+        )
     }
     /**
      * Create and dispatch a new error.
@@ -1595,11 +1752,11 @@ export class ChessBoard extends LitElement {
      */
     #highlightSquare (square: BoardSquare, value = null as HighlightStyle | null) {
         if (value) {
-            this.#highlightSquares.set(square, value)
+            this.#dragHighlights.set(square, value)
         } else {
-            this.#highlightSquares.delete(square)
+            this.#dragHighlights.delete(square)
         }
-        this.requestUpdate('_highlightSquares')
+        this.requestUpdate()
     }
     /**
      * Check which square (or off the board) the given window x,y position is.
@@ -1608,15 +1765,22 @@ export class ChessBoard extends LitElement {
      * @returns Square name 'offboard'.
      */
     #isXYOnSquare (x: number, y: number): BoardLocation | 'offboard' {
-        // TODO: remove cast when TypeScript fixes ShadowRoot.elementsFromPoint
-        const elements = (this
-            .shadowRoot as unknown as Document)!.elementsFromPoint(x, y)
-        const squareEl = elements.find((e) => e.part.contains('square'))
-        const square =
-            squareEl === undefined
-                ? 'offboard'
-                : (squareEl.getAttribute('data-square') as BoardLocation)
-        return square
+        const rect = this._boardElement?.getBoundingClientRect()
+        if (!rect || !rect.width || !rect.height) {
+            return 'offboard'
+        }
+        // Squares fill the board inside its border. Convert layout pixels into viewport pixels, in case the board
+        // is scaled with CSS transforms.
+        const board = this._boardElement!
+        const scale = rect.width/board.offsetWidth
+        const size = board.clientWidth*scale/8
+        const col = Math.floor((x - rect.left - board.clientLeft*scale)/size)
+        const row = Math.floor((y - rect.top - board.clientTop*scale)/size)
+        if (col < 0 || col > 7 || row < 0 || row > 7) {
+            return 'offboard'
+        }
+        const isFlipped = this.orientation === 'black'
+        return `${COLUMNS[isFlipped ? 7 - col : col]}${isFlipped ? row + 1 : 8 - row}` as BoardSquare
     }
     /**
      * Set the board to the given board `position`.
@@ -1633,7 +1797,7 @@ export class ChessBoard extends LitElement {
             return
         }
         // Update board state.
-        this.#currentPosition = position
+        this.#currentPosition = newPos
         // Fire change event, wait for animation time if this is a programmatic change.
         setTimeout(() => {
             this.dispatchEvent(
@@ -1671,35 +1835,24 @@ export class ChessBoard extends LitElement {
         }
         // Wait for a paint.
         this.requestUpdate()
-        await new Promise((resolve) => setTimeout(resolve, 0))
-        // Promise that resolves when the snapback is complete.
-        return new Promise<void>((resolve) => {
-            const transitionComplete = () => {
-                this._draggedPieceElement.removeEventListener(
-                    'transitionend',
-                    transitionComplete
-                )
-                resolve()
-                this.dispatchEvent(
-                    new CustomEvent<ChessboardEventDetail['snapback-end']>(
-                        'snapback-end',
-                        {
-                            bubbles: true,
-                            detail: {
-                                piece,
-                                square: source,
-                                position: deepCopy(this.#currentPosition),
-                                orientation: this.orientation,
-                            },
-                        }
-                    )
-                )
-            }
-            this._draggedPieceElement.addEventListener(
-                'transitionend',
-                transitionComplete
+        await this.#nextFrame()
+        // Wait until the snapback is complete.
+        await this.#draggedPieceTransition(this.snapbackSpeed)
+        this.#finishDrag()
+        this.dispatchEvent(
+            new CustomEvent<ChessboardEventDetail['snapback-end']>(
+                'snapback-end',
+                {
+                    bubbles: true,
+                    detail: {
+                        piece,
+                        square: source,
+                        position: deepCopy(this.#currentPosition),
+                        orientation: this.orientation,
+                    },
+                }
             )
-        })
+        )
     }
     /**
      * Start dragging a chess `piece`.
@@ -1743,15 +1896,22 @@ export class ChessBoard extends LitElement {
             location: source === 'spare' ? 'offboard' : source,
             source,
         }
+        this.#addWindowListeners()
         this.requestUpdate()
     }
     /**
      * Stop the piece drag operation.
      * @param location - Board position where the operation stopped.
+     * @param cancelled - Was the operation cancelled; the piece is returned without a `drop` event.
      */
-    async #stopDraggingPiece (location: BoardLocation) {
+    async #stopDraggingPiece (location: BoardLocation, cancelled = false) {
         isDragging(this.#dragState)
         const { source, piece } = this.#dragState
+        if (cancelled) {
+            this.#dragHighlights.clear()
+            await this.#snapbackDraggedPiece()
+            return
+        }
         // Determine what the action should be.
         let action: Action = 'drop'
         if (location === 'offboard') {
@@ -1759,7 +1919,7 @@ export class ChessBoard extends LitElement {
         }
         const newPosition = deepCopy(this.#currentPosition)
         const oldPosition = deepCopy(this.#currentPosition)
-        // Ssee if a spare piece was placed on the board.
+        // See if a spare piece was placed on the board.
         if (source === 'spare' && isValidSquare(location)) {
             newPosition[location] = piece
         }
@@ -1793,7 +1953,7 @@ export class ChessBoard extends LitElement {
         )
         this.dispatchEvent(dropEvent)
         // Remove square highlight hints from the board.
-        this.#highlightSquares.clear()
+        this.#dragHighlights.clear()
         // Check if action was changed and perform it.
         if (action === 'snapback') {
             await this.#snapbackDraggedPiece()
@@ -1802,10 +1962,26 @@ export class ChessBoard extends LitElement {
         } else if (action === 'drop') {
             await this.#dropDraggedPieceOnSquare(location)
         }
-        // Clear dragging state.
+    }
+    /**
+     * Clear the drag state after the final animation of a drag operation, before firing the final event, so that a new
+     * drag can be started from the event listener.
+     */
+    #finishDrag () {
         this.#dragState = undefined
         // Render the final post-dragging board state.
         this.requestUpdate()
+    }
+    /**
+     * Stop any drag operation immediately, without animations or events.
+     */
+    #cancelDrag () {
+        this.#removeWindowListeners()
+        if (this.#dragState !== undefined) {
+            this.#dragState = undefined
+            this.#dragHighlights.clear()
+            this.requestUpdate()
+        }
     }
     /**
      * Trash (remove) the currently dragged piece.
@@ -1828,21 +2004,10 @@ export class ChessBoard extends LitElement {
         }
         // Wait for a paint.
         this.requestUpdate()
-        await new Promise((resolve) => setTimeout(resolve, 0))
-        // Promise that resolves when the piece has been trashed.
-        return new Promise<void>((resolve) => {
-            const transitionComplete = () => {
-                this._draggedPieceElement.removeEventListener(
-                    'transitionend',
-                    transitionComplete
-                )
-                resolve()
-            }
-            this._draggedPieceElement.addEventListener(
-                'transitionend',
-                transitionComplete
-            )
-        })
+        await this.#nextFrame()
+        // Wait until the piece has been trashed.
+        await this.#draggedPieceTransition(this.trashSpeed)
+        this.#finishDrag()
     }
     /**
      * Update the position of a piece being dragged.
@@ -1899,23 +2064,21 @@ export class ChessBoard extends LitElement {
      * @param useAnimation If `true`, animate to the new position. If `false`, show the new position instantly.
      */
     setPosition (position: BoardPosition, useAnimation = true) {
-        position = normalizePosition(position)
-        // Validate position object.
-        if (!isValidPositionObject(position)) {
+        // Validate the position before normalizing, which would turn invalid positions into an empty board.
+        const isValid = isString(position)
+                      ? position.toLowerCase() === 'start' || isValidFen(position)
+                      : isValidPositionObject(position)
+        if (!isValid) {
             throw this.#error(
                 6482,
                 'Invalid value passed to the position method.',
                 position
             )
         }
-        if (useAnimation) {
-            // Start the animations.
-            const animations = this.#calculateAnimations(
-                this.#currentPosition,
-                position
-            )
-            this.#doAnimations(animations, this.#currentPosition, position)
-        }
+        position = normalizePosition(position)
+        // Start the animations, or stop any animations still running from a previous change.
+        const animations = useAnimation ? this.#calculateAnimations(this.#currentPosition, position) : []
+        this.#doAnimations(animations, this.#currentPosition, position)
         this.#setCurrentPosition(position)
         this.requestUpdate()
     }
@@ -1982,37 +2145,91 @@ export class ChessBoard extends LitElement {
         this.requestUpdate()
     }
 
+    // Typed listeners for the board's own events.
+    addEventListener<K extends keyof ChessboardEventMap>(
+        type: K,
+        listener: (this: ChessBoard, ev: ChessboardEventMap[K]) => unknown,
+        options?: boolean | AddEventListenerOptions
+    ): void
+    addEventListener<K extends keyof HTMLElementEventMap>(
+        type: K,
+        listener: (this: ChessBoard, ev: HTMLElementEventMap[K]) => unknown,
+        options?: boolean | AddEventListenerOptions
+    ): void
+    addEventListener(
+        type: string,
+        listener: EventListenerOrEventListenerObject,
+        options?: boolean | AddEventListenerOptions
+    ): void
+    addEventListener (
+        type: string,
+        listener: EventListenerOrEventListenerObject,
+        options?: boolean | AddEventListenerOptions
+    ) {
+        super.addEventListener(type, listener, options)
+    }
+    removeEventListener<K extends keyof ChessboardEventMap>(
+        type: K,
+        listener: (this: ChessBoard, ev: ChessboardEventMap[K]) => unknown,
+        options?: boolean | EventListenerOptions
+    ): void
+    removeEventListener<K extends keyof HTMLElementEventMap>(
+        type: K,
+        listener: (this: ChessBoard, ev: HTMLElementEventMap[K]) => unknown,
+        options?: boolean | EventListenerOptions
+    ): void
+    removeEventListener(
+        type: string,
+        listener: EventListenerOrEventListenerObject,
+        options?: boolean | EventListenerOptions
+    ): void
+    removeEventListener (
+        type: string,
+        listener: EventListenerOrEventListenerObject,
+        options?: boolean | EventListenerOptions
+    ) {
+        super.removeEventListener(type, listener, options)
+    }
+
     // -------------------------------------------------------------------------
     // Lifecycle Callbacks
     // -------------------------------------------------------------------------
 
-    firstUpdated () {
-        // We need to re-render to read the size of the container.
-        this.requestUpdate()
-        if (window.ResizeObserver !== undefined) {
-            new ResizeObserver(() => {
-                this.resize()
-            }).observe(this)
+    updated (changed: PropertyValues<this>) {
+        if (
+            changed.has('countdown') || changed.has('turn') ||
+            changed.has('blackSeconds') || changed.has('whiteSeconds')
+        ) {
+            this.#restartCountdown()
         }
     }
 
     connectedCallback () {
         super.connectedCallback()
-        window.addEventListener('pointermove', this.#pointermoveWindow.bind(this))
-        window.addEventListener('pointerup', this.#pointerupWindow.bind(this))
-        window.addEventListener('touchmove', this.#pointermoveWindow.bind(this), {
-            passive: false,
+        // The observer also reports the initial size, so the board is rendered again once its size is known.
+        this.#resizeObserver = new ResizeObserver(() => {
+            // Rendering in the observer callback would resize the observed elements again within the same frame,
+            // which browsers report as an error. Render on the next frame instead, if the board size changed.
+            requestAnimationFrame(() => {
+                if (this.#squareSize !== this.#renderedSquareSize) {
+                    this.resize()
+                }
+            })
         })
-        window.addEventListener('touchend', this.#pointerupWindow.bind(this), {
-            passive: false,
-        })
+        this.#resizeObserver.observe(this)
+        if (this.parentElement) {
+            // Needed for `adjustByHeight`.
+            this.#resizeObserver.observe(this.parentElement)
+        }
+        // Resume a countdown that was running when the element was disconnected.
+        this.#scheduleClockTick()
     }
 
     disconnectedCallback () {
         super.disconnectedCallback()
-        window.removeEventListener('pointermove', this.#pointermoveWindow.bind(this))
-        window.removeEventListener('pointerup', this.#pointerupWindow.bind(this))
-        window.removeEventListener('touchmove', this.#pointermoveWindow.bind(this))
-        window.removeEventListener('touchend', this.#pointerupWindow.bind(this))
+        this.#resizeObserver?.disconnect()
+        this.#resizeObserver = null
+        this.#stopClockTicks()
+        this.#cancelDrag()
     }
 }

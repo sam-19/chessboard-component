@@ -4,10 +4,10 @@
  * @license MIT
  */
 
-import { BoardSquare } from '#types'
+import type { BoardSquare } from '../types.js'
 import { html } from 'lit'
 import { styleMap } from 'lit/directives/style-map.js'
-import { presetColors } from './chessboard-styles'
+import { presetColors } from './chessboard-styles.js'
 
 let arrowNr = 0
 
@@ -51,27 +51,20 @@ abstract class BoardOverlay {
         })
     }
     /**
-     * Auxiliary function to convert a `square` code to an array of x,y coordinates.
+     * Auxiliary function to convert a `square` code to an array of x,y coordinates on the rendered board.
      * @param square - Square code.
-     * @returns Square coordinates as `[col, row]` with index range 1-8.
+     * @param flipped - Is the board rendered with black at the bottom.
+     * @returns Square coordinates as `[col, row]` with index range 1-8, counted from the bottom left corner.
      */
-    protected _getSquareCoordinates (square: BoardSquare) {
+    protected _getSquareCoordinates (square: BoardSquare, flipped = false) {
         const parts = square.match(/^([a-h])([1-8])$/)
-        if (!parts || !parts[1] || !parts[2]) {
+        if (!parts) {
             console.error(`Square code ${square} given to arrow generator is not a valid board square.`)
             return null
         }
-        if (parts[1]==='a') return [ 1, parseInt(parts[2]) ]
-        else if (parts[1]==='b') return [ 2, parseInt(parts[2]) ]
-        else if (parts[1]==='c') return [ 3, parseInt(parts[2]) ]
-        else if (parts[1]==='d') return [ 4, parseInt(parts[2]) ]
-        else if (parts[1]==='e') return [ 5, parseInt(parts[2]) ]
-        else if (parts[1]==='f') return [ 6, parseInt(parts[2]) ]
-        else if (parts[1]==='g') return [ 7, parseInt(parts[2]) ]
-        else if (parts[1]==='h') return [ 8, parseInt(parts[2]) ]
-        else {
-            return null
-        }
+        const col = 'abcdefgh'.indexOf(parts[1]) + 1
+        const row = parseInt(parts[2])
+        return flipped ? [ 9 - col, 9 - row ] : [ col, row ]
     }
 }
 /**
@@ -114,8 +107,13 @@ export class SquareMarker extends BoardOverlay {
             this._lineWidth = value
         }
     } 
-    getSvg () {
-        const square = this._getSquareCoordinates(this._square)
+    /**
+     * Get SVG markup for the marker.
+     * @param flipped - Is the board rendered with black at the bottom.
+     * @returns SVG markup template.
+     */
+    getSvg (flipped = false) {
+        const square = this._getSquareCoordinates(this._square, flipped)
         // Abort if square code was invalid.
         if (!square) {
             return
@@ -257,23 +255,24 @@ export class StraightArrow extends BoardOverlay {
      * @returns Offset coordinates for a line from origin to target.
      */
     protected _getStartOffset (origin: number[], target: number[]) {
-        let dx = target[0] - origin[0]
-        let dy = target[1] - origin[1]
-        let angle = Math.atan2(dy, dx)
-        let xPos = Math.cos(angle)
-        let yPos = Math.sin(angle)
+        const dx = target[0] - origin[0]
+        const dy = target[1] - origin[1]
+        const angle = Math.atan2(dy, dx)
+        const xPos = Math.cos(angle)
+        const yPos = Math.sin(angle)
         return [xPos, yPos]
     }
     /**
      * Get SVG markup for the arrow.
+     * @param flipped - Is the board rendered with black at the bottom.
      * @returns SVG markup template.
      */
-    getSvg () {
+    getSvg (flipped = false) {
         if (this._target === this._origin) {
             return html``
         }
-        const origin = this._getSquareCoordinates(this._origin)
-        const target = this._getSquareCoordinates(this._target)
+        const origin = this._getSquareCoordinates(this._origin, flipped)
+        const target = this._getSquareCoordinates(this._target, flipped)
         // Abort if square code was invalid.
         if (origin === null || target === null) {
             return
@@ -306,7 +305,7 @@ export class StraightArrow extends BoardOverlay {
             >
                 <defs>
                     <marker
-                        id="${this._id}-arrow-head"
+                        id="arrow-head-${this._id}"
                         markerHeight="3"
                         markerUnits="strokeWidth"
                         markerWidth="3"
@@ -318,7 +317,7 @@ export class StraightArrow extends BoardOverlay {
                     </marker>
                 </defs>
                 <line
-                    marker-end="url(#${this._id}-arrow-head)"
+                    marker-end="url(#arrow-head-${this._id})"
                     stroke="currentColor"
                     stroke-width="${this._arrowSize*this.squareWidth}%"
                     x1="${x1*this.squareWidth}%"
@@ -336,19 +335,19 @@ export class StraightArrow extends BoardOverlay {
  * a board axis, creating a straight angle if needed.
  */
 export class AngledArrow extends StraightArrow {
-    getSvg () {
+    getSvg (flipped = false) {
         if (this._target === this._origin) {
             return html``
         }
-        const origin = this._getSquareCoordinates(this._origin)
-        const target = this._getSquareCoordinates(this._target)
+        const origin = this._getSquareCoordinates(this._origin, flipped)
+        const target = this._getSquareCoordinates(this._target, flipped)
         // Abort if square code was invalid.
         if (origin === null || target === null) {
             return
         }
         // Return a straight arrow, if origin and target share the row or column.
         if (origin[0] === target[0] || origin[1] === target[1]) {
-            return super.getSvg()
+            return super.getSvg(flipped)
         }
         // Calculate arrow coordinates (as a fraction of board width) relative to board bottom left corner.
         // We need to know if the target is closer to the row or column edge of the board.
@@ -406,7 +405,7 @@ export class AngledArrow extends StraightArrow {
             >
                 <defs>
                     <marker
-                        id="${this._id}-arrow-head"
+                        id="arrow-head-${this._id}"
                         markerHeight="3"
                         markerUnits="strokeWidth"
                         markerWidth="3"
@@ -426,7 +425,7 @@ export class AngledArrow extends StraightArrow {
                     y2="${aLegY2*this.squareWidth}%"
                 />
                 <line
-                    marker-end="url(#${this._id}-arrow-head)"
+                    marker-end="url(#arrow-head-${this._id})"
                     stroke="currentColor"
                     stroke-width="${this.arrowSize*this.squareWidth}%"
                     x1="${bLegX1*this.squareWidth}%"
@@ -450,17 +449,16 @@ export class PathArrow extends StraightArrow {
             }
         }
     }
-    getSvg () {
+    getSvg (flipped = false) {
         if (this._path.length === 2) {
-            return super.getSvg()
+            return super.getSvg(flipped)
         } else if (this._path.length < 2) {
             return html``
         }
         const points = [] as string[]
-        const finalLine = { x1: 0, x2: 0, y1: 0, y2: 0 }
         for (let i=0; i<this._path.length - 1; i++) {
-            const origin = this._getSquareCoordinates(this._path[i])
-            const target = this._getSquareCoordinates(this._path[i+1])
+            const origin = this._getSquareCoordinates(this._path[i], flipped)
+            const target = this._getSquareCoordinates(this._path[i+1], flipped)
             // Abort if square code was invalid.
             if (origin === null || target === null) {
                 return
@@ -518,7 +516,7 @@ export class PathArrow extends StraightArrow {
             >
                 <defs>
                     <marker
-                        id="${this._id}-arrow-head"
+                        id="arrow-head-${this._id}"
                         markerHeight="3"
                         markerUnits="strokeWidth"
                         markerWidth="3"
@@ -530,7 +528,7 @@ export class PathArrow extends StraightArrow {
                     </marker>
                 </defs>
                 <polyline
-                    marker-end="${ finalLine.x1 ? '' : 'url(#' + this._id + '-arrow-head)' }"
+                    marker-end="url(#arrow-head-${this._id})"
                     points="${points.join(' ')}"
                     style="fill:none;stroke:currentColor;stroke-width:${this.arrowSize*this.squareWidth}"
                 />

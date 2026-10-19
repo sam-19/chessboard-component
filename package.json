@@ -1,50 +1,56 @@
 {
   "name": "@sam-19/chessboard-component",
-  "version": "0.1.8",
+  "version": "0.2.0",
+  "description": "A <chess-board> web component built with Lit.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sam-19/chessboard-component.git"
+  },
   "type": "module",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
       "default": "./dist/index.js"
     },
-    "./types": "./dist/types/index.d.ts",
-    "./package.json": "./package.json",
-    "./dist/types": "./dist/types/index.d.ts",
-    "./umd/chessboard-component.js": "./umd/chessboard-component.js",
-    "./umd/chessboard-component.umd.cjs": "./umd/chessboard-component.umd.cjs"
+    "./package.json": "./package.json"
   },
   "files": [
-    "dist/*",
-    "umd/*",
-    "umd/*.LICENSE.txt",
-    "package.json",
-    "custom-elements.json",
-    "LICENSE",
+    "dist",
+    "CHANGELOG.md",
+    "LICENSE.md",
     "README.md"
   ],
+  "sideEffects": [
+    "./dist/index.js",
+    "./dist/chessboard.js"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev": "vite",
-    "build": "npm run build:package && npm run build:standalone && npm run build:manifest",
-    "build:manifest": "node ./node_modules/@custom-elements-manifest/analyzer/cem.js analyze",
-    "build:package": "tsc && node node_modules/tsconfig-replace-paths/dist/commonjs --project tsconfig.json && vite build --config vite.config.package.ts",
-    "build:standalone": "tsc && node node_modules/tsconfig-replace-paths/dist/commonjs --project tsconfig.json && vite build --config vite.config.standalone.ts",
+    "build": "tsc -p tsconfig.build.json",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
     "prepack": "npm run build",
-    "preview": "vite preview",
     "release": "npm publish --access=public"
   },
   "dependencies": {
-    "lit": "^3.2.0"
+    "lit": "^3.3.3"
   },
   "devDependencies": {
-    "@custom-elements-manifest/analyzer": "^0.10.3",
-    "@types/node": "^22.7.7",
-    "tsconfig-replace-paths": "^0.0.14",
-    "typescript": "^5.5.3",
-    "vite": "^7.1.2",
-    "vite-plugin-singlefile": "^2.0.2",
-    "vite-tsconfig-paths": "^5.0.1"
+    "@eslint/js": "^10.0.0",
+    "@vitest/browser-playwright": "^5.0.5",
+    "eslint": "^10.0.0",
+    "eslint-plugin-lit": "^2.3.1",
+    "playwright": "^1.64.1",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.71.2",
+    "vite": "^8.3.4",
+    "vitest": "^5.0.5"
   }
 }

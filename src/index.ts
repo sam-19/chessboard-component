@@ -1,19 +1,24 @@
-import { ChessBoard } from './chessboard'
-import {
-    type AnimationSpeed,
-    type BoardSquare,
-    type ChessboardEvent,
-    type ChessPiece,
-    type  HighlightStyle,
-} from '#types'
+import { ChessBoard, type RenderPieceFunction } from './chessboard.js'
+import { AngledArrow, PathArrow, SquareMarker, StraightArrow, type MarkerType } from './utils/overlays.js'
+import { presetColors } from './utils/chessboard-styles.js'
+import { fenToObj, isValidFen, normalizePosition, objToFen, START_FEN, START_POSITION } from './utils/index.js'
 
+export type * from './types.js'
+export { ChessboardEvents } from './types.js'
+export type { MarkerType, RenderPieceFunction }
 export {
-    AnimationSpeed,
-    BoardSquare,
+    AngledArrow,
     ChessBoard,
-    ChessboardEvent,
-    ChessPiece,
-    HighlightStyle,
+    PathArrow,
+    SquareMarker,
+    StraightArrow,
+    START_FEN,
+    START_POSITION,
+    fenToObj,
+    isValidFen,
+    normalizePosition,
+    objToFen,
+    presetColors,
 }
 
 export default ChessBoard

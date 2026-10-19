@@ -1,6 +1,6 @@
-import { render, svg, html, TemplateResult } from 'lit'
-import { RenderPieceFunction } from '#root/src/chessboard'
-import { ChessPiece } from '#types'
+import { render, svg, html, type TemplateResult } from 'lit'
+import type { RenderPieceFunction } from '../chessboard.js'
+import type { ChessPiece } from '../types.js'
 
 export const renderPiece: RenderPieceFunction = (
   piece: ChessPiece,
