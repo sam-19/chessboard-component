@@ -7,7 +7,7 @@
 import type { BoardSquare } from '../types.js'
 import { html } from 'lit'
 import { styleMap } from 'lit/directives/style-map.js'
-import { presetColors } from './chessboard-styles.js'
+import { presetColors, presetName } from './chessboard-styles.js'
 
 let arrowNr = 0
 
@@ -23,21 +23,27 @@ abstract class BoardOverlay {
     squareWidth = 100/8
     /**
      * Create a board overlay of the given color.
-     * @param color - Arrow color. Preset colors can be used by starting the color with `@`, e.g. `@red`.
+     * @param color - Arrow color. Preset colors can be used by starting the color with `@`, e.g. `@red`, or by their
+     *                single-letter code, e.g. `R`.
      * @param opacity - Optional opacity of the arrow.
      */
     constructor(color: string, opacity = 0.75) {
-        this._color = color.startsWith('@') 
-                    ? presetColors[
-                        color.substring(1) as keyof typeof presetColors
-                    ] || presetColors.grey
-                    : color
+        const preset = presetName(color)
+        this._color = preset === undefined ? color : presetColors[preset ?? 'grey']
         if (opacity < 0) {
             opacity = 0
         } else if (opacity > 1) {
             opacity = 1
         }
         this._opacity = opacity
+    }
+    /** The overlay's CSS color, presets resolved. */
+    get color () {
+        return this._color
+    }
+    /** The overlay's opacity. */
+    get opacity () {
+        return this._opacity
     }
     protected getStyles (extra?: {[key: string]: string | number }) {
         return styleMap({
@@ -72,6 +78,14 @@ abstract class BoardOverlay {
  */
 export type MarkerType = 'circle' |'cross'
 /**
+ * Whether a marker is drawn over or under the piece on its square.
+ */
+export type MarkerLayer = 'over' | 'under'
+/** Stacking of the overlays relative to the pieces (z-index 10). */
+const Z_UNDER_PIECE = 5
+const Z_OVER_PIECE = 15
+const Z_LABEL = 20
+/**
  * A marker placed over a square on the board.
  */
 export class SquareMarker extends BoardOverlay {
@@ -79,17 +93,37 @@ export class SquareMarker extends BoardOverlay {
     /** Square of the marker. */
     protected _square: BoardSquare
     protected _type: MarkerType
+    protected _layer: MarkerLayer
     /**
      * Create a marker on the given `square`.
      * @param square - Square code.
      * @param type - Type of the marker.
      * @param color - Color of the marker.
-     * @param opacity . Optional opacity of the marker.
+     * @param opacity - Optional opacity of the marker.
+     * @param layer - Draw the marker over or under the piece; by default a circle goes under it and a cross over it.
      */
-    constructor (square: BoardSquare, type: MarkerType, color: string, opacity?: number) {
+    constructor (square: BoardSquare, type: MarkerType, color: string, opacity?: number, layer?: MarkerLayer) {
         super(color, opacity)
         this._square = square
         this._type =  type
+        this._layer = layer ?? (type === 'circle' ? 'under' : 'over')
+    }
+    /** Square of the marker. */
+    get square () {
+        return this._square
+    }
+    /** Type of the marker. */
+    get type () {
+        return this._type
+    }
+    /**
+     * Whether the marker is drawn over or under the piece on its square.
+     */
+    get layer () {
+        return this._layer
+    }
+    set layer (value: MarkerLayer) {
+        this._layer = value
     }
     /**
      * Line width of the marker as a fraction of square size.
@@ -123,8 +157,7 @@ export class SquareMarker extends BoardOverlay {
         if (this._type === 'circle') {
             // Position the edge of circle 5% away from square edge.
             const r = 0.45 - 0.5*this.lineWidth
-            // Place the circle marker below the board piece.
-            const styles = this.getStyles({ zIndex: 5 })
+            const styles = this.getStyles({ zIndex: this._layer === 'over' ? Z_OVER_PIECE : Z_UNDER_PIECE })
             return html`
                 <svg 
                     part="overlay-marker"
@@ -141,8 +174,7 @@ export class SquareMarker extends BoardOverlay {
                 </svg>
             `
         } else if (this._type === 'cross') {
-            // Place the cross marker above the board piece.
-            const styles = this.getStyles({ zIndex: 15 })
+            const styles = this.getStyles({ zIndex: this._layer === 'over' ? Z_OVER_PIECE : Z_UNDER_PIECE })
             return html`
                 <svg 
                     part="overlay-marker"
@@ -171,6 +203,114 @@ export class SquareMarker extends BoardOverlay {
     }
 }
 
+/**
+ * Vertical position of a text label in its square.
+ */
+export type LabelPosition = 'top' | 'middle' | 'bottom'
+/**
+ * Horizontal alignment of a text label in its square.
+ */
+export type LabelAlign = 'left' | 'center' | 'right'
+/**
+ * A short text label on a square, e.g. an evaluation or a move number. Drawn over the pieces.
+ */
+export class SquareLabel extends BoardOverlay {
+    /** Space between the text and the square's edge, as a fraction of square size. */
+    static readonly PADDING = 0.06
+    protected _square: BoardSquare
+    protected _text: string
+    protected _position: LabelPosition
+    protected _align: LabelAlign
+    protected _size = 0.25
+    /**
+     * Create a text label on the given `square`.
+     * @param square - Square code.
+     * @param text - Text of the label.
+     * @param color - Color of the text: a CSS color, a preset (`@red`) or a preset's letter code (`R`).
+     * @param position - Vertical position in the square.
+     * @param align - Horizontal alignment in the square.
+     * @param opacity - Optional opacity of the label.
+     */
+    constructor (
+        square: BoardSquare,
+        text: string,
+        color: string,
+        position: LabelPosition = 'top',
+        align: LabelAlign = 'right',
+        opacity?: number,
+    ) {
+        super(color, opacity)
+        this._square = square
+        this._text = text
+        this._position = position
+        this._align = align
+    }
+    get square () {
+        return this._square
+    }
+    get text () {
+        return this._text
+    }
+    get position () {
+        return this._position
+    }
+    get align () {
+        return this._align
+    }
+    /**
+     * Font size of the label as a fraction of square size. Value between `0.1` and `1`.
+     * @default 0.25
+     */
+    get size () {
+        return this._size
+    }
+    set size (value: number) {
+        this._size = Math.max(0.1, Math.min(1, value))
+    }
+    /**
+     * Get SVG markup for the label.
+     * @param flipped - Is the board rendered with black at the bottom.
+     * @returns SVG markup template.
+     */
+    getSvg (flipped = false) {
+        const square = this._getSquareCoordinates(this._square, flipped)
+        if (!square || !this._text) {
+            return
+        }
+        // Coordinates in board percents (the view box is 100 units wide).
+        const pad = SquareLabel.PADDING*this.squareWidth
+        const left = (square[0] - 1)*this.squareWidth
+        const top = (8 - square[1])*this.squareWidth
+        const [x, anchor] = this._align === 'left' ? [left + pad, 'start']
+                          : this._align === 'center' ? [left + this.squareWidth/2, 'middle']
+                          : [left + this.squareWidth - pad, 'end']
+        const [y, baseline] = this._position === 'top' ? [top + pad, 'text-before-edge']
+                            : this._position === 'middle' ? [top + this.squareWidth/2, 'central']
+                            : [top + this.squareWidth - pad, 'text-after-edge']
+        const styles = this.getStyles({ zIndex: Z_LABEL })
+        return html`
+            <svg
+                part="overlay-label"
+                style="${styles}"
+                viewBox="0 0 100 100"
+            >
+                <text
+                    dominant-baseline="${baseline}"
+                    fill="currentColor"
+                    font-size="${this._size*this.squareWidth}"
+                    font-weight="600"
+                    paint-order="stroke"
+                    stroke-linejoin="round"
+                    stroke-width="${0.12*this._size*this.squareWidth}"
+                    style="font-family: var(--label-font-family, monospace); stroke: var(--label-outline-color, rgba(255, 255, 255, 0.75))"
+                    text-anchor="${anchor}"
+                    x="${x}"
+                    y="${y}"
+                >${this._text}</text>
+            </svg>
+        `
+    }
+}
 /**
  * Creates a board overlay with an arrow pointing from one square to another. The created arrow always points straight
  * from the origin to the target, even when the move is not along a board axis.
@@ -211,7 +351,8 @@ export class StraightArrow extends BoardOverlay {
             StraightArrow._TARGET_OFFSET = value
         }
     }
-    protected _arrowSize = 0.25
+    protected _arrowSize = 0.2
+    protected _headSize = 0.5
     /** Unique ID for matching the arrow head with the shaft. */
     protected _id: number
     /** Origin square of the arrow. */
@@ -235,6 +376,34 @@ export class StraightArrow extends BoardOverlay {
     /**
      * Width of the arrow shaft as a fraction of square size.
      */
+    /** Origin square of the arrow. */
+    get origin () {
+        return this._origin
+    }
+    /** Target square of the arrow. */
+    get target () {
+        return this._target
+    }
+    /** Whether the arrow is a knight's move: one square along one axis and two along the other. */
+    get isKnightMove () {
+        const files = Math.abs(this._origin.charCodeAt(0) - this._target.charCodeAt(0))
+        const ranks = Math.abs(Number(this._origin[1]) - Number(this._target[1]))
+        return (files === 1 && ranks === 2) || (files === 2 && ranks === 1)
+    }
+    /**
+     * Length and width of the arrow head as a fraction of square size. Value between `0` and `1`.
+     * @default 0.5
+     */
+    get headSize () {
+        return this._headSize
+    }
+    set headSize (value: number) {
+        this._headSize = Math.max(0, Math.min(1, value))
+    }
+    /**
+     * Width of the arrow's line as a fraction of square size. Value between `0` and `0.25`.
+     * @default 0.2
+     */
     get arrowSize () {
         return this._arrowSize
     }
@@ -248,6 +417,40 @@ export class StraightArrow extends BoardOverlay {
             this._arrowSize = value
         }
     } 
+    /** Length of the arrow head along the line, in squares. */
+    protected get _headLength () {
+        return this._headSize
+    }
+    /** Shortest stretch of shaft left between the arrow's start and its head, in squares. */
+    protected get _minShaft () {
+        return this.arrowSize
+    }
+    /**
+     * Size of the arrow head marker in its `strokeWidth` units: the head is sized in squares, independently of the
+     * line width.
+     */
+    protected get _markerScale () {
+        return this.arrowSize ? this._headSize/this.arrowSize : 0
+    }
+    /**
+     * Where a leg of the arrow starts and ends: distances from the centers of its start and target squares (in
+     * squares). They are normally `start` and `tip`; on a short leg (one square) the head and the shaft would not fit
+     * between them, so both are scaled down by the same factor, moving the arrow's ends towards the square centers
+     * while keeping it between the squares. An offset of 0 stays at the center.
+     * @param legLength - Distance between the centers of the leg's start and target squares.
+     * @param start - Wanted start offset (0 for a leg starting at a turning point).
+     * @param tip - Wanted tip offset.
+     * @returns The `[start, tip]` offsets to use.
+     */
+    protected _legOffsets (legLength: number, start: number, tip: number) {
+        const room = Math.max(0, legLength - this._headLength - this._minShaft)
+        const wanted = start + tip
+        if (wanted <= room) {
+            return [start, tip]
+        }
+        const scale = wanted ? room/wanted : 0
+        return [start*scale, tip*scale]
+    }
     /**
      * Calculate arrow offset from square center for an angled arrow.
      * @param origin - Coordinates for the origin square.
@@ -282,17 +485,16 @@ export class StraightArrow extends BoardOverlay {
         // Calculate arrow coordinates (as a fraction of board width) relative to board bottom left corner.
         const offset = this._getStartOffset(origin, target)
         // Origin and target coordinates in "square" units.
+        const [start, tip] = this._legOffsets(distance, StraightArrow.START_OFFSET, StraightArrow.TARGET_OFFSET)
         const targetOffset = [
-            (3*this.arrowSize + StraightArrow.TARGET_OFFSET)*offset[0],
-            (3*this.arrowSize + StraightArrow.TARGET_OFFSET)*offset[1]
+            (this._headLength + tip)*offset[0],
+            (this._headLength + tip)*offset[1]
         ]
         const x2 = target[0] - 0.5 - targetOffset[0]
         const y2 = 8 - (target[1] - 0.5 - targetOffset[1])
-        // Offsets and arrow size cannot exceed the distance between the squares, or it will skew the arrow.
-        const maxOffset = distance - (3*this.arrowSize + StraightArrow.TARGET_OFFSET) - 1E-5
         const startOffset = [
-            Math.min(StraightArrow.START_OFFSET, maxOffset)*offset[0],
-            Math.min(StraightArrow.START_OFFSET, maxOffset)*offset[1]
+            start*offset[0],
+            start*offset[1]
         ]
         const x1 = origin[0] - (0.5 - startOffset[0])
         const y1 = 8 - (origin[1] - 0.5 + startOffset[1])
@@ -306,9 +508,10 @@ export class StraightArrow extends BoardOverlay {
                 <defs>
                     <marker
                         id="arrow-head-${this._id}"
-                        markerHeight="3"
+                        markerHeight="${this._markerScale}"
                         markerUnits="strokeWidth"
-                        markerWidth="3"
+                        markerWidth="${this._markerScale}"
+                        viewBox="0 0 3 3"
                         orient="auto"
                         refX="0.1"
                         refY="1.5"
@@ -383,16 +586,15 @@ export class AngledArrow extends StraightArrow {
         const aLegY2 = 8 - (interceptRow - 0.5 + angleRowEdge)
         // Distance between turning point and target squares.
         const bLegDistance = Math.sqrt((target[0] - interceptCol)**2 + (target[1] - interceptRow)**2)
-        // Offsets and arrow size cannot exceed the distance between the squares, or it will skew the arrow.
-        const overflow = Math.max(3*this.arrowSize + StraightArrow.TARGET_OFFSET - bLegDistance + 1E-5, 0)
-        const overflowX = overflow*(target[0] - interceptCol)
-        const overflowY = overflow*(target[1] - interceptRow)
-        const bLegX1 = interceptCol - overflowX - 0.5
-        const bLegY1 = 8 - (interceptRow - overflowY - 0.5)
+        // The second leg starts from the turning point; on a knight move it is a single square, so the tip goes
+        // into the target square far enough to leave some shaft before the head.
+        const bLegX1 = interceptCol - 0.5
+        const bLegY1 = 8 - (interceptRow - 0.5)
         const offsetB = this._getStartOffset([interceptCol, interceptRow], target)
+        const [, tip] = this._legOffsets(bLegDistance, 0, AngledArrow.TARGET_OFFSET)
         const targetOffset = [
-            (3*this.arrowSize + AngledArrow.TARGET_OFFSET)*offsetB[0],
-            (3*this.arrowSize + AngledArrow.TARGET_OFFSET)*offsetB[1]
+            (this._headLength + tip)*offsetB[0],
+            (this._headLength + tip)*offsetB[1]
         ]
         const bLegX2 = target[0] - 0.5 - targetOffset[0]
         const bLegY2 = 8 - (target[1] - 0.5 - targetOffset[1])
@@ -406,9 +608,10 @@ export class AngledArrow extends StraightArrow {
                 <defs>
                     <marker
                         id="arrow-head-${this._id}"
-                        markerHeight="3"
+                        markerHeight="${this._markerScale}"
                         markerUnits="strokeWidth"
-                        markerWidth="3"
+                        markerWidth="${this._markerScale}"
+                        viewBox="0 0 3 3"
                         orient="auto"
                         refX="0.1"
                         refY="1.5"
@@ -476,9 +679,12 @@ export class PathArrow extends StraightArrow {
             points.push(`${pathNode[0]},${pathNode[1]}`)
             if (i === this._path.length - 2) {
                 const offset = this._getStartOffset(origin, target)
+                // The last segment starts at a turning point (a single segment is drawn as a straight arrow).
+                const segment = Math.sqrt((target[0] - origin[0])**2 + (target[1] - origin[1])**2)
+                const [, tip] = this._legOffsets(segment, 0, AngledArrow.TARGET_OFFSET)
                 const endOffset = [
-                    (3*this.arrowSize + AngledArrow.TARGET_OFFSET)*offset[0],
-                    (3*this.arrowSize + AngledArrow.TARGET_OFFSET)*offset[1]
+                    (this._headLength + tip)*offset[0],
+                    (this._headLength + tip)*offset[1]
                 ]
                 const finalNode = [
                     (target[0] - 0.5 - endOffset[0])*this.squareWidth,
@@ -517,9 +723,10 @@ export class PathArrow extends StraightArrow {
                 <defs>
                     <marker
                         id="arrow-head-${this._id}"
-                        markerHeight="3"
+                        markerHeight="${this._markerScale}"
                         markerUnits="strokeWidth"
-                        markerWidth="3"
+                        markerWidth="${this._markerScale}"
+                        viewBox="0 0 3 3"
                         orient="auto"
                         refX="0.1"
                         refY="1.5"

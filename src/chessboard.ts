@@ -32,7 +32,7 @@ import {
     isValidPositionObject,
     whitePieces,
 } from './utils/index.js'
-import { styles, presetColors } from './utils/chessboard-styles.js'
+import { colorSquareValue, styles } from './utils/chessboard-styles.js'
 import { renderPiece as renderWikipediaSVGPiece } from './utils/wikipedia-pieces-svg.js'
 import type {
     Action,
@@ -51,7 +51,7 @@ import type {
     OffBoardAction,
     SquareColor,
 } from './types.js'
-import { AngledArrow, PathArrow, SquareMarker, StraightArrow } from './utils/overlays.js'
+import { AngledArrow, PathArrow, SquareLabel, SquareMarker, StraightArrow } from './utils/overlays.js'
 
 declare global {
     interface HTMLElementTagNameMap {
@@ -283,7 +283,11 @@ export type RenderPieceFunction = (
  * @cssprop [--preset-color-green: rgb(0, 200, 0)] - Green preset color for overlays and colored squares.
  * @cssprop [--preset-color-grey: rgb(127, 127, 127)] - Grey preset color for overlays and colored squares.
  * @cssprop [--preset-color-orange: rgb(255, 127, 0)] - Orange preset color for overlays and colored squares.
- * @cssprop [--preset-color-purple: rgb(200, 0, 100)] - Purple preset color for overlays and colored squares.
+ * @cssprop [--label-font-family=monospace] - Font of the text labels on squares.
+ * @cssprop [--label-outline-color=rgba(255, 255, 255, 0.75)] - Outline around the text labels, for reading them over
+ *          pieces and dark squares; `transparent` leaves it out.
+ * @cssprop [--preset-color-pink: rgb(255, 60, 200)] - Pink preset color for overlays and colored squares.
+ * @cssprop [--preset-color-purple: rgb(140, 60, 220)] - Purple preset color for overlays and colored squares.
  * @cssprop [--preset-color-red: rgb(255, 0, 0)] - Red preset color for overlays and colored squares.
  * @cssprop [--preset-color-yellow: rgb(225, 200, 0)] - Yellow preset color for overlays and colored squares.
  *
@@ -304,6 +308,9 @@ export type RenderPieceFunction = (
  * @csspart highlight-unavailable - A square highlighted as `unavailable`.
  * @csspart draggable - A square with a piece that can be dragged.
  * @csspart colored - A colored square.
+ * @csspart overlay-arrow - An arrow overlay.
+ * @csspart overlay-marker - A circle or cross marker on a square.
+ * @csspart overlay-label - A text label on a square.
  * @csspart notation - The square location labels.
  * @csspart alpha - The alpha (column) labels.
  * @csspart numeric - The numeric (row) labels.
@@ -399,6 +406,17 @@ export class ChessBoard extends LitElement {
     angledArrows: StraightArrow[] = []
 
     /**
+     * If `true`, straight arrows of a knight's move (`straightArrows`, `straight-arrows`) are drawn as angled arrows,
+     * along the knight's L. Arrows given as angled arrows are always angled.
+     * @default false
+     */
+    @property({
+        attribute: 'angled-knight-arrows',
+        type: Boolean,
+    })
+    angledKnightArrows = false
+
+    /**
      * Animation speed for when pieces appear on a square.
      *
      * Note that the "appear" animation only occurs when `sparePieces` is `false`.
@@ -474,12 +492,7 @@ export class ChessBoard extends LitElement {
             for (const desc of squareDescriptions) {
                 const { squares: colored, rest } = parseOverlayDescription(desc)
                 // The color is optional and defaults to yellow.
-                const color = !rest ? 'var(--preset-color-yellow)'
-                            : rest.startsWith('@')
-                              ? rest.substring(1) in presetColors
-                                ? `var(--preset-color-${rest.substring(1)})`
-                                : 'var(--preset-color-grey)'
-                              : rest
+                const color = colorSquareValue(rest)
                 for (const square of colored) {
                     squares.push({ color: color, square: square })
                 }
@@ -512,6 +525,14 @@ export class ChessBoard extends LitElement {
     draggablePieces = false
 
     /**
+     * How far, in pixels, the pointer has to move with a piece pressed before the piece is picked up. A shorter press
+     * is a click: the piece stays put and only `square-click` fires. `0` picks the piece up on press.
+     * @default 4
+     */
+    @property({ attribute: 'drag-threshold', type: Number })
+    dragThreshold = 4
+
+    /**
      * If `'snapback'`, pieces dropped off the board will return to their original square. If `'trash'`, pieces dropped
      * off the board will be removed from the board.
      *
@@ -520,6 +541,29 @@ export class ChessBoard extends LitElement {
      */
     @property({ attribute: 'drop-off-board' })
     dropOffBoard: OffBoardAction = 'snapback'
+
+    /**
+     * Ghost pieces: half-transparent images of pieces on the given squares, drawn under any piece on the same square
+     * and ignoring the pointer, e.g. to show where a piece came from. The attribute is a `;` separated list of squares
+     * and a piece code (`e2 wP; g1 f3 wN`); the property maps squares to piece codes.
+     */
+    @property({
+        attribute: 'ghost-pieces',
+        converter: (value: string | null) => {
+            const ghosts: BoardPositionObject = {}
+            for (const desc of (value ?? '').split(';')) {
+                const { squares, rest } = parseOverlayDescription(desc)
+                if (!/^[wb][KQRBNP]$/.test(rest)) {
+                    continue
+                }
+                for (const square of squares) {
+                    ghosts[square] = rest as ChessPiece
+                }
+            }
+            return ghosts
+        },
+    })
+    ghostPieces: BoardPositionObject = {}
 
     /**
      * Squares to highlight, mapped to their highlight style, e.g. `{ e2: 'previous', e4: 'previous', g8: 'check' }`.
@@ -614,7 +658,8 @@ export class ChessBoard extends LitElement {
     sparePieces = false
 
     /**
-     * List of markers to overlay on the given squares.
+     * List of markers to overlay on the given squares: `e4 d5 o @green` (`o` circle, `x` cross). A `+` or `-` after
+     * the type draws the marker over or under the piece (`e4 o+ G`); by default circles go under and crosses over.
      */
     @property({
         attribute: 'square-markers',
@@ -626,14 +671,15 @@ export class ChessBoard extends LitElement {
             const markerDescriptions = value.split(';')
             for (const desc of markerDescriptions) {
                 const { squares, rest } = parseOverlayDescription(desc)
-                // The rest is the marker type followed by the color.
-                const [type, color] = [rest.charAt(0), rest.substring(1).trim()]
-                const mType = type === 'o' ? 'circle' : type === 'x' ? 'cross' : null
-                if (!mType || !color) {
+                // The rest is the marker type, an optional layer, and the color.
+                const match = rest.match(/^([ox])([+-]?)\s*(.*)$/s)
+                if (!match || !match[3]) {
                     continue
                 }
+                const mType = match[1] === 'o' ? 'circle' : 'cross'
+                const layer = match[2] === '+' ? 'over' : match[2] === '-' ? 'under' : undefined
                 for (const square of squares) {
-                    markers.push(new SquareMarker(square, mType, color))
+                    markers.push(new SquareMarker(square, mType, match[3].trim(), undefined, layer))
                 }
             }
             return markers
@@ -641,6 +687,36 @@ export class ChessBoard extends LitElement {
         type: Array,
     })
     squareMarkers: SquareMarker[] = []
+
+    /**
+     * Text labels on squares: `e4 t R: +1`. The label's vertical position (`t` top, `m` middle, `b` bottom) comes
+     * first, optionally followed by its alignment (`l` left, `c` center, `r` right, the default), then the color and,
+     * after a colon, the text. Without a color the text has the board's text color.
+     */
+    @property({
+        attribute: 'square-labels',
+        converter: (value: string | null) => {
+            if (!value) {
+                return null
+            }
+            const labels = []
+            for (const desc of value.split(';')) {
+                const { squares, rest } = parseOverlayDescription(desc)
+                const match = rest.match(/^([tmb])([lcr]?)\s*([^:]*):\s?(.*)$/s)
+                if (!match || !match[4].trim()) {
+                    continue
+                }
+                const position = match[1] === 't' ? 'top' : match[1] === 'm' ? 'middle' : 'bottom'
+                const align = match[2] === 'l' ? 'left' : match[2] === 'c' ? 'center' : 'right'
+                for (const square of squares) {
+                    labels.push(new SquareLabel(square, match[4].trim(), match[3].trim(), position, align))
+                }
+            }
+            return labels
+        },
+        type: Array,
+    })
+    squareLabels: SquareLabel[] = []
 
     /**
      * A list of straight arrows to draw on the board.
@@ -747,6 +823,10 @@ export class ChessBoard extends LitElement {
     #currentPosition: BoardPositionObject = {}
 
     #dragState?: DragState
+    /** Angled versions of knight-move straight arrows, kept so that each keeps its SVG ids across renders. */
+    #knightArrows = new WeakMap<StraightArrow, AngledArrow>()
+    /** A piece pressed but not yet moved past `dragThreshold`. */
+    #pressedPiece?: { source: BoardLocation, piece: ChessPiece, x: number, y: number }
 
     #resizeObserver: ResizeObserver | null = null
     /** Square size used in the latest render. */
@@ -1179,6 +1259,7 @@ export class ChessBoard extends LitElement {
                         ${this.showNotation && col === 0
                             ? html`<div part="notation numeric">${rank}</div>`
                             : nothing}
+                        ${this.#renderGhost(this.ghostPieces?.[square])}
                         ${this.#renderPiece(piece, pieceStyles, isDragSource)}
                     </div>
                 `)
@@ -1197,13 +1278,34 @@ export class ChessBoard extends LitElement {
             arrows.push(arr.getSvg(isFlipped))
         }
         for (const arr of this.straightArrows || []) {
-            arrows.push(arr.getSvg(isFlipped))
+            // Only plain straight arrows: a subclass (angled or path arrow) already has its shape.
+            const angled = this.angledKnightArrows && arr.constructor === StraightArrow && arr.isKnightMove
+            arrows.push((angled ? this.#knightArrow(arr) : arr).getSvg(isFlipped))
         }
         const markers = []
         for (const mrk of this.squareMarkers || []) {
             markers.push(mrk.getSvg(isFlipped))
         }
+        for (const lbl of this.squareLabels || []) {
+            markers.push(lbl.getSvg(isFlipped))
+        }
         return html`<div part="board" style=${styleMap(styles)}>${squares}${arrows}${markers}</div>`
+    }
+    /**
+     * Render a ghost piece (see `ghostPieces`) on its square.
+     * @param piece - The ghost's piece, if the square has one.
+     */
+    #renderGhost (piece: ChessPiece | undefined) {
+        if (!piece || !isFunction(this.renderPiece)) {
+            return nothing
+        }
+        return html`
+            <div
+                part="ghost-piece"
+                piece=${piece}
+                ...=${renderPieceDirective(piece, this.renderPiece)}
+            ></div>
+        `
     }
     /**
      * Render the the given piece on the board.
@@ -1361,12 +1463,27 @@ export class ChessBoard extends LitElement {
     }
 
     /**
+     * The angled version of a knight-move straight arrow, with the same color, opacity and size.
+     */
+    #knightArrow (arrow: StraightArrow) {
+        let angled = this.#knightArrows.get(arrow)
+        if (!angled) {
+            angled = new AngledArrow(arrow.origin, arrow.target, arrow.color, arrow.opacity)
+            this.#knightArrows.set(arrow, angled)
+        }
+        // The sizes can be changed on the arrow after it was given to the board.
+        angled.headSize = arrow.headSize
+        angled.arrowSize = arrow.arrowSize
+        return angled
+    }
+
+    /**
      * Check if the pointer event can start a drag operation.
      * @param e - Pointer event.
      */
     #canStartDrag (e: PointerEvent) {
         // Only drag with the primary pointer and the main (left) mouse button, and one piece at a time.
-        return e.isPrimary && e.button === 0 && this.#dragState === undefined
+        return e.isPrimary && e.button === 0 && this.#dragState === undefined && this.#pressedPiece === undefined
     }
 
     #pointerdownSquare (e: PointerEvent) {
@@ -1385,12 +1502,7 @@ export class ChessBoard extends LitElement {
             return
         }
         e.preventDefault()
-        this.#startDraggingPiece(
-            square,
-            this.#currentPosition[square]!,
-            e.clientX,
-            e.clientY
-        )
+        this.#pressPiece(square, this.#currentPosition[square]!, e.clientX, e.clientY)
     }
 
     #pointerdownSparePiece (e: PointerEvent) {
@@ -1402,7 +1514,19 @@ export class ChessBoard extends LitElement {
         const pieceEl = sparePieceContainerEl.querySelector('[part~=piece]')
         const piece = pieceEl!.getAttribute('piece')! as ChessPiece
         e.preventDefault()
-        this.#startDraggingPiece('spare', piece, e.clientX, e.clientY)
+        this.#pressPiece('spare', piece, e.clientX, e.clientY)
+    }
+
+    /**
+     * Pick up a pressed piece once the pointer moves past `dragThreshold`, or right away if there is none.
+     */
+    #pressPiece (source: BoardLocation, piece: ChessPiece, x: number, y: number) {
+        if (this.dragThreshold <= 0) {
+            this.#startDraggingPiece(source, piece, x, y)
+            return
+        }
+        this.#pressedPiece = { source, piece, x, y }
+        this.#addWindowListeners()
     }
 
     #pointerenterSquare (e: PointerEvent) {
@@ -1470,6 +1594,19 @@ export class ChessBoard extends LitElement {
     // Window listeners are arrow functions, so that the same function can be removed later.
 
     #pointermoveWindow = (e: PointerEvent) => {
+        const pressed = this.#pressedPiece
+        if (pressed && e.isPrimary) {
+            if (Math.hypot(e.clientX - pressed.x, e.clientY - pressed.y) < this.dragThreshold) {
+                return
+            }
+            this.#pressedPiece = undefined
+            this.#removeWindowListeners()
+            // The position may have changed while the piece was held down.
+            if (pressed.source === 'spare' || this.#currentPosition[pressed.source as BoardSquare] === pressed.piece) {
+                this.#startDraggingPiece(pressed.source, pressed.piece, e.clientX, e.clientY)
+            }
+            return
+        }
         // Do nothing if we are not dragging a piece.
         if (!this.#isDragging || !e.isPrimary) {
             return
@@ -1479,6 +1616,12 @@ export class ChessBoard extends LitElement {
     }
 
     #pointerupWindow = (e: PointerEvent) => {
+        // Released before the piece was picked up: a click, which the square's click listener handles.
+        if (this.#pressedPiece && e.isPrimary) {
+            this.#pressedPiece = undefined
+            this.#removeWindowListeners()
+            return
+        }
         // Do nothing if we are not dragging a piece.
         if (!this.#isDragging || !e.isPrimary) {
             return
@@ -1977,6 +2120,7 @@ export class ChessBoard extends LitElement {
      */
     #cancelDrag () {
         this.#removeWindowListeners()
+        this.#pressedPiece = undefined
         if (this.#dragState !== undefined) {
             this.#dragState = undefined
             this.#dragHighlights.clear()

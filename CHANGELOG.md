@@ -1,5 +1,26 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+- A piece is picked up only after the pointer has moved a few pixels with the piece pressed (`drag-threshold`, 4 by default). A click no longer starts a drag, so the piece no longer jumps under the pointer and snaps back; `drag-start` fires when the piece is picked up. `drag-threshold="0"` picks it up on press, as before.
+- Arrows are a notch smaller: the head is 0.5 squares long and wide (was 0.75, three line widths) and the line 0.2 squares wide (was 0.25). The head is sized in squares (`headSize`), independently of the line width (`arrowSize`).
+
+### Added
+- Ghost pieces: the `ghost-pieces` attribute (`e2 wP; g1 f3 wN`) and `ghostPieces` property (squares mapped to piece codes) draw half-transparent pieces on squares, under any piece on the same square and ignoring the pointer, e.g. to show where a piece came from.
+- `angled-knight-arrows` (`angledKnightArrows`): straight arrows of a knight's move are drawn along the knight's L, whatever set them (the attribute, the property or `parsePgnMarkup`).
+- Read-only `color` and `opacity` on overlays, and `isKnightMove` on arrows.
+- Text labels on squares: the `square-labels` attribute (`e4 t R: +1`) and `squareLabels` property, with `SquareLabel` objects. A label sits at the top, middle or bottom of its square, aligned left, center or right, over the pieces.
+- Square markers can be drawn over or under the piece: `+` or `-` after the marker type (`e4 o+ G`), or the `layer` property. By default circles go under the piece and crosses over it, as before.
+- `parsePgnMarkup(comment)` reads PGN board markup (`%cal`, `%csl`, `%ccl`, `%cxl`, `%ctl`) into overlays.
+- Read-only `origin` and `target` on arrows, `square` and `type` on square markers.
+- Preset colors can be given by single-letter codes, as in PGN board markup (`[%cal Gd2d4]`): `G`, `R`, `Y`, `B`, `C`, `O`, `U` (purple), `P` (pink) and `X` (grey), with or without `@`. They work for arrows, square markers and colored squares. The codes are exported as `presetColorCodes`.
+- A pink preset, `@pink`.
+
+### Fixed
+- Arrows over a single square (a pawn's single step, a king's step, the second leg of an angled knight-move arrow) had no shaft: the head took up the whole distance and sat on the origin or the turning point instead of pointing into the target square. On a short leg the start and tip offsets are now scaled down by the same factor, moving both ends towards the square centers and leaving some shaft; longer arrows are unchanged.
+- The `@purple` preset was a magenta (`rgb(200, 0, 100)`), hard to tell from `@red`; it is now a purple (`rgb(140, 60, 220)`).
+
 ## 0.2.0
 
 ### Breaking

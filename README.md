@@ -44,6 +44,7 @@ Clicking or tapping a square fires `square-click`, which can be used for click-t
 | `position` | Position as a FEN string, `start`, or (as a property) a position object such as `{ e4: 'wP' }`. |
 | `orientation` | `white` (default) or `black` at the bottom. |
 | `draggable-pieces` | Allow dragging pieces. |
+| `drag-threshold` | Pixels the pointer has to move with a piece pressed before it is picked up; a shorter press is a click. Default 4, `0` picks it up on press. |
 | `available-board-pieces` | Squares whose pieces can be dragged, e.g. `e2 d2`. Default: all. |
 | `drop-off-board` | `snapback` (default) or `trash` pieces dropped off the board. |
 | `spare-pieces` | Show spare pieces above and below the board (replaces player details). |
@@ -59,16 +60,35 @@ Clicking or tapping a square fires `square-click`, which can be used for click-t
 
 ### Overlays
 
-Overlays are given as `;` separated lists. Colors can be any CSS color or a preset: `@blue`, `@cyan`, `@green`, `@grey`, `@orange`, `@purple`, `@red` or `@yellow`.
+Overlays are given as `;` separated lists. Colors can be any CSS color or a preset: `@blue`, `@cyan`, `@green`, `@grey`, `@orange`, `@pink`, `@purple`, `@red` or `@yellow`. Presets can also be given by the single-letter codes of PGN board markup (`[%cal Gd2d4]`), with or without the `@`: `G` green, `R` red, `Y` yellow, `B` blue, `C` cyan, `O` orange, `U` purple, `P` pink and `X` grey.
 
 | Attribute | Example |
 | --- | --- |
 | `straight-arrows` | `e2 e4 @green; g1 f3 @blue` |
 | `angled-arrows` | `g1 f3 @blue` (knight-style arrow), or a path: `a1 a4 d4 @red` |
-| `square-markers` | `e4 d5 o @green; h7 x @red` (`o` circle, `x` cross) |
+| `angled-knight-arrows` | Draw straight arrows of a knight's move (`straight-arrows`, PGN `%cal`) as angled arrows. |
+| `square-markers` | `e4 d5 o @green; h7 x @red` (`o` circle, `x` cross). A `+` or `-` after the type draws the marker over or under the piece (`e4 o+ G`); by default circles go under and crosses over. |
+| `ghost-pieces` | `e2 wP; g1 f3 wN` Half-transparent pieces on the squares, under any piece on the same square and ignoring the pointer. The `ghostPieces` property maps squares to piece codes. |
 | `color-squares` | `e4 d5 @green; a1` (yellow by default) |
+| `square-labels` | `e4 t R: +1; d5 mc @blue: !?` Position `t` top, `m` middle or `b` bottom, optionally followed by alignment `l` left, `c` center or `r` right (the default), then the color and, after a colon, the text. Without a color the text has the board's text color. |
 
-The `straightArrows`, `angledArrows`, `squareMarkers` and `colorSquares` properties take the corresponding objects (`StraightArrow`, `AngledArrow`, `PathArrow`, `SquareMarker`) directly.
+The `straightArrows`, `angledArrows`, `squareMarkers`, `squareLabels` and `colorSquares` properties take the corresponding objects (`StraightArrow`, `AngledArrow`, `PathArrow`, `SquareMarker`, `SquareLabel`) directly. Labels are drawn in `--label-font-family` (monospace by default), at a quarter of the square's size (`size`), with a light outline (`--label-outline-color`) so they can be read over pieces and dark squares.
+
+#### Markup from PGN comments
+
+`parsePgnMarkup(comment)` reads the board markup of a PGN comment into overlays, ready to assign to the board:
+
+```js
+const markup = parsePgnMarkup('Develop [%cal Gg1f3,Gb1c3] and watch [%csl Rf7] [%ctl Ue4t+1]')
+board.straightArrows = markup.straightArrows
+board.colorSquares = markup.colorSquares
+board.squareMarkers = markup.squareMarkers
+board.squareLabels = markup.squareLabels
+```
+
+It reads `%cal` (arrows), `%csl` (colored squares), `%ccl` (circles), `%cxl` (crosses) and `%ctl` (text labels: color, square, position `t`/`m`/`b`, text, e.g. `Re4t+1`). A label after the entries (`[%cal Ge2e4 "Classical"]`) is left out.
+
+An arrow's line is 0.2 squares wide (`arrowSize`) and its head 0.5 squares long (`headSize`), set per arrow object. Where arrows start and end is shared by all boards: `StraightArrow.START_OFFSET` (default 0.4) and `StraightArrow.TARGET_OFFSET` (default 0.5) are distances from the square centers, in squares. On a short arrow (one square) both offsets are scaled down by the same factor, moving its ends towards the square centers, so that some shaft always shows before the head.
 
 ### Methods
 
