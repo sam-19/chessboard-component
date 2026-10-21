@@ -1,6 +1,6 @@
 {
   "name": "@sam-19/chessboard-component",
-  "version": "0.2.0",
+  "version": "1.0.0",
   "description": "A <chess-board> web component built with Lit.",
   "license": "MIT",
   "repository": {
